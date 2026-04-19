@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTO成员管理系统</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <header class="app-header">
+            <h1>GTO成员管理系统</h1>
+            <div class="data-controls">
+                <button id="btn-export" class="btn btn-primary">导出JSON</button>
+                <button id="btn-import" class="btn btn-primary">导入JSON</button>
+                <input type="file" id="file-import" accept=".json" hidden>
+                <button id="btn-clear" class="btn btn-danger">清空数据</button>
+            </div>
+        </header>
+
+        <nav class="app-nav">
+            <button class="nav-btn active" data-page="members">成员管理</button>
+            <button class="nav-btn" data-page="activities">活动管理</button>
+        </nav>
+
+        <main class="app-main">
+            <div id="page-members" class="page active">
+                <div class="page-toolbar">
+                    <div class="toolbar-left">
+                        <button id="btn-add-member" class="btn btn-success">+ 新建成员</button>
+                        <button id="btn-batch-add" class="btn btn-primary">批量新增</button>
+                    </div>
+                    <div class="search-box">
+                        <input type="text" id="search-member" placeholder="搜索成员...">
+                    </div>
+                    <div class="toolbar-right">
+                        <button id="btn-rank-adjust" class="btn btn-warning">职级调整</button>
+                        <button id="btn-power-adjust" class="btn btn-warning">战力调整</button>
+                    </div>
+                    <div class="filter-controls">
+                        <select id="filter-rank">
+                            <option value="">全部职级</option>
+                            <option value="R5">R5</option>
+                            <option value="R4">R4</option>
+                            <option value="R3">R3</option>
+                            <option value="R2">R2</option>
+                            <option value="R1">R1</option>
+                        </select>
+                        <select id="filter-status">
+                            <option value="">全部状态</option>
+                            <option value="false">在盟</option>
+                            <option value="true">离盟</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="members-grid" id="members-grid"></div>
+            </div>
+
+            <div id="page-activities" class="page">
+                <div class="placeholder">
+                    <p>活动管理功能开发中...</p>
+                </div>
+            </div>
+        </main>
+
+        <div id="modal-container" class="modal-container hidden"></div>
+    </div>
+
+    <script src="config/constants.js"></script>
+    <script src="core/storage.js"></script>
+    <script src="core/importExport.js"></script>
+    <script src="data/member.js"></script>
+    <script src="data/memberManager.js"></script>
+    <script src="data/dataManager.js"></script>
+    <script src="ui/memberModal.js"></script>
+    <script src="ui/batchAddModal.js"></script>
+    <script src="ui/rankAdjustModal.js"></script>
+    <script src="ui/powerAdjustModal.js"></script>
+    <script src="ui/memberRenderer.js"></script>
+    <script src="ui/pages/membersPage.js"></script>
+    <script src="ui/pages/activitiesPage.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
