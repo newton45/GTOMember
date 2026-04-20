@@ -24,6 +24,9 @@ class PowerAdjustModal {
         });
 
         this.initializePowerSlots();
+        
+        // 【关键逻辑 1】：初始化时存入初始快照 S0
+        this.history = [JSON.parse(JSON.stringify(this.powerSlots))];
 
         const html = `
             <div class="modal modal-power" id="modal-power-adjust">
@@ -54,8 +57,48 @@ class PowerAdjustModal {
         this.container.innerHTML = html;
         this.container.classList.remove('hidden');
         this.bindEvents();
-        this.initDragDrop();
         this.renderUnassignedMembers();
+    }
+
+    // 将 FLIP 动画封装为通用管线
+    applyStateWithAnimation(updateLogicFn) {
+        this.isAnimating = true;
+
+        // F: First - 记录位置
+        const blocks = Array.from(this.container.querySelectorAll('.power-member-block'));
+        const firstRects = new Map();
+        blocks.forEach(block => firstRects.set(block.dataset.id, block.getBoundingClientRect()));
+
+        // 执行具体的数据更改逻辑
+        updateLogicFn();
+
+        // L: Last - 渲染新位置
+        this.renderPowerGrid();
+        this.renderUnassignedMembers();
+
+        // I & P: Invert & Play
+        const newBlocks = Array.from(this.container.querySelectorAll('.power-member-block'));
+        newBlocks.forEach(block => {
+            const oldRect = firstRects.get(block.dataset.id);
+            if (oldRect) {
+                const newRect = block.getBoundingClientRect();
+                const dx = oldRect.left - newRect.left;
+                const dy = oldRect.top - newRect.top;
+                if (dx !== 0 || dy !== 0) {
+                    block.style.transition = 'none';
+                    block.style.transform = `translate(${dx}px, ${dy}px)`;
+                    requestAnimationFrame(() => {
+                        void block.offsetHeight;
+                        block.style.transition = 'transform 300ms cubic-bezier(0.2, 0, 0, 1)';
+                        block.style.transform = 'translate(0, 0)';
+                    });
+                }
+            }
+        });
+
+        setTimeout(() => {
+            this.isAnimating = false;
+        }, 350);
     }
 
     renderPowerSlot(power, member) {
@@ -86,7 +129,7 @@ class PowerAdjustModal {
             }));
         });
 
-        unassignedArea.innerHTML = this.unassignedMembers.map(m => this.renderMemberBlock(m)).join('');
+        unassignedArea.innerHTML = this.unassignedMembers.map(m => this.renderMemberBlock(m, 'unassigned')).join('');
     }
 
     initializePowerSlots() {
@@ -102,159 +145,99 @@ class PowerAdjustModal {
         this.container.querySelector('[data-action="cancel"]').onclick = () => this.close();
         this.container.querySelector('[data-action="save"]').onclick = () => this.save();
         this.container.querySelector('[data-action="undo"]').onclick = () => this.undo();
-    }
 
-    initDragDrop() {
-        const slots = this.container.querySelectorAll('.power-slot');
-        const blocks = this.container.querySelectorAll('.power-member-block');
-        const unassignedBlocks = this.container.querySelectorAll('#unassigned-list .power-member-block');
+        // 采用“事件委托(Event Delegation)”机制，确保 DOM 重绘后依然有效，修复第二次无法拖动的问题
+        this.container.ondragstart = (e) => {
+            const block = e.target.closest('.power-member-block');
+            if (block) {
+                this.draggedMember = block.dataset.id;
+                this.sourcePower = block.dataset.power === 'unassigned' ? null : parseInt(block.dataset.power);
+                setTimeout(() => block.classList.add('dragging'), 0);
+                e.dataTransfer.effectAllowed = 'move';
+            }
+        };
 
-        slots.forEach(slot => {
-            slot.addEventListener('dragover', (e) => {
+        this.container.ondragend = (e) => {
+            const block = e.target.closest('.power-member-block');
+            if (block) {
+                block.classList.remove('dragging');
+                this.draggedMember = null;
+                this.sourcePower = null;
+                this.targetPower = null;
+                this.container.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            }
+        };
+
+        this.container.ondragover = (e) => {
+            const slot = e.target.closest('.power-slot');
+            if (slot && !this.isAnimating) {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
                 slot.classList.add('drag-over');
-            });
+            }
+        };
 
-            slot.addEventListener('dragleave', () => {
+        this.container.ondragleave = (e) => {
+            const slot = e.target.closest('.power-slot');
+            if (slot && !slot.contains(e.relatedTarget)) {
                 slot.classList.remove('drag-over');
-            });
+            }
+        };
 
-            slot.addEventListener('drop', (e) => {
+        this.container.ondrop = (e) => {
+            const slot = e.target.closest('.power-slot');
+            if (slot && !this.isAnimating) {
                 e.preventDefault();
                 slot.classList.remove('drag-over');
 
-                if (!this.draggedMember || this.isAnimating) return;
+                if (!this.draggedMember) return;
 
                 const targetPower = parseInt(slot.dataset.power);
                 if (this.sourcePower === targetPower) return;
 
                 this.targetPower = targetPower;
                 this.handleDrop();
-            });
-        });
-
-        [...blocks, ...unassignedBlocks].forEach(block => {
-            block.addEventListener('dragstart', (e) => {
-                this.draggedMember = block.dataset.id;
-                this.sourcePower = parseInt(block.dataset.power) || null;
-                block.classList.add('dragging');
-                e.dataTransfer.effectAllowed = 'move';
-            });
-
-            block.addEventListener('dragend', () => {
-                block.classList.remove('dragging');
-                this.draggedMember = null;
-                this.sourcePower = null;
-                this.targetPower = null;
-            });
-        });
+            }
+        };
     }
 
     handleDrop() {
         const member = Object.values(this.membersByRank).flat().find(m => m.id === this.draggedMember);
         if (!member) return;
 
-        this.isAnimating = true;
-
-        if (this.sourcePower < this.targetPower) {
-            this.handleDownwardMove(member);
-        } else if (this.sourcePower > this.targetPower) {
-            this.handleUpwardMove(member);
-        } else {
-            this.isAnimating = false;
-        }
-    }
-
-    handleDownwardMove(member) {
-        const membersToMove = [];
-        const targetMember = this.powerSlots[this.targetPower];
-
-        if (targetMember && targetMember.id !== member.id) {
-            for (let i = this.sourcePower + 1; i <= this.targetPower; i++) {
-                if (this.powerSlots[i] && this.powerSlots[i].id !== member.id) {
-                    membersToMove.push(this.powerSlots[i]);
-                }
-            }
-
-            this.animateSequenceMove(membersToMove, -1, member, this.targetPower, () => {
-                this.saveToHistory();
-                this.renderPowerGrid();
-                this.renderUnassignedMembers();
-                this.isAnimating = false;
-            });
-        } else {
-            this.isAnimating = false;
-        }
-    }
-
-    handleUpwardMove(member) {
-        const membersToMove = [];
-        const sourceMember = this.powerSlots[this.targetPower];
-
-        if (!sourceMember || sourceMember.id === member.id) {
-            for (let i = this.targetPower; i < this.sourcePower; i++) {
-                if (this.powerSlots[i]) {
-                    membersToMove.push(this.powerSlots[i]);
-                }
-            }
-
-            this.animateSequenceMove(membersToMove, 1, member, this.targetPower, () => {
-                this.saveToHistory();
-                this.renderPowerGrid();
-                this.renderUnassignedMembers();
-                this.isAnimating = false;
-            });
-        } else {
-            this.isAnimating = false;
-        }
-    }
-
-    animateSequenceMove(members, direction, draggedMember, targetPower, callback) {
-        const duration = 1000;
-        const perMemberDuration = duration / (members.length + 1);
-        let delay = 0;
-
-        members.forEach((member, index) => {
-            setTimeout(() => {
-                const block = this.container.querySelector(`.power-member-block[data-id="${member.id}"]`);
-                if (block) {
-                    block.style.transition = `opacity ${perMemberDuration * 0.3}s ease-in-out`;
-                    block.style.opacity = '0.3';
-
-                    setTimeout(() => {
-                        const newPower = member.powerRank + direction;
-                        if (newPower >= 1 && newPower <= 100) {
-                            this.powerSlots[newPower] = member;
-                            delete this.powerSlots[member.powerRank];
-                            member.powerRank = newPower;
-
-                            const newSlot = this.container.querySelector(`.power-slot[data-power="${newPower}"]`);
-                            if (newSlot) {
-                                const numberElement = newSlot.querySelector('.power-number');
-                                const newBlock = this.renderMemberBlock(member, newPower);
-                                newSlot.innerHTML = numberElement.outerHTML + newBlock;
-                            }
-                        }
-                    }, perMemberDuration * 0.3);
-                }
-            }, delay);
-            delay += perMemberDuration;
+        this.applyStateWithAnimation(() => {
+            this.updateDataModel(member);
+            // 【关键逻辑 2】：变动完成后，存入新状态快照 Sn
+            this.history.push(JSON.parse(JSON.stringify(this.powerSlots)));
         });
+    }
 
-        setTimeout(() => {
-            this.powerSlots[targetPower] = draggedMember;
-            delete this.powerSlots[this.sourcePower];
-            draggedMember.powerRank = targetPower;
-
-            const targetSlot = this.container.querySelector(`.power-slot[data-power="${targetPower}"]`);
-            if (targetSlot) {
-                const numberElement = targetSlot.querySelector('.power-number');
-                targetSlot.innerHTML = numberElement.outerHTML + this.renderMemberBlock(draggedMember, targetPower);
+    // 处理核心数据的移位计算
+    updateDataModel(draggedMember) {
+        // 自动消除空白位置的逻辑增强：
+        // 逻辑本质是一个“区间平移”，不需要关心中间是否有空格，只要遍历区间并重新落位即可
+        if (this.sourcePower === null) {
+            // 插入模式
+            for (let i = 100; i > this.targetPower; i--) {
+                this.powerSlots[i] = this.powerSlots[i - 1];
+                if(this.powerSlots[i]) this.powerSlots[i].powerRank = i;
             }
-
-            callback();
-        }, delay);
+        } else {
+            const step = this.sourcePower < this.targetPower ? 1 : -1;
+            for (let i = this.sourcePower; i !== this.targetPower; i += step) {
+                const next = i + step;
+                this.powerSlots[i] = this.powerSlots[next];
+                if(this.powerSlots[i]) this.powerSlots[i].powerRank = i;
+            }
+        }
+        this.powerSlots[this.targetPower] = draggedMember;
+        draggedMember.powerRank = this.targetPower;
+        
+        // 清理由于循环位移可能在原位置留下的残余数据
+        if (this.sourcePower !== null && this.sourcePower !== this.targetPower) {
+            // 在上面的循环中，原位置 sourcePower 已经被 i+step 覆盖了，
+            // 只有当 targetPower 覆盖完之后，逻辑才是完整的
+        }
     }
 
     renderPowerGrid() {
@@ -272,24 +255,25 @@ class PowerAdjustModal {
     }
 
     undo() {
-        if (this.history.length === 0) {
-            alert('没有可撤销的操作');
+        if (this.isAnimating || this.history.length <= 1) {
+            if (this.history.length <= 1) alert('已回退至初始状态');
             return;
         }
 
-        const previousState = this.history.pop();
-        this.powerSlots = previousState.powerSlots;
+        // 【关键逻辑 3】：弹出当前态 Sn，应用栈顶的 Sn-1
+        this.history.pop(); 
+        const prevState = JSON.parse(JSON.stringify(this.history[this.history.length - 1]));
 
-        Object.values(this.powerSlots).forEach(member => {
-            if (member) {
-                const power = Object.keys(this.powerSlots).find(k => this.powerSlots[k] === member);
-                member.powerRank = power ? parseInt(power) : null;
-            }
+        this.applyStateWithAnimation(() => {
+            this.powerSlots = prevState;
+            // 必须同步更新成员对象内部的 powerRank 引用
+            const allMembers = Object.values(this.membersByRank).flat();
+            allMembers.forEach(m => m.powerRank = null); // 先重置
+            Object.entries(this.powerSlots).forEach(([power, mData]) => {
+                const m = allMembers.find(mem => mem.id === mData.id);
+                if (m) m.powerRank = parseInt(power);
+            });
         });
-
-        this.renderPowerGrid();
-        this.renderUnassignedMembers();
-        this.initDragDrop();
     }
 
     save() {

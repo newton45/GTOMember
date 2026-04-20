@@ -13,25 +13,13 @@ class BatchAddModal {
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label>请输入成员信息（每行格式：昵称-ID）</label>
-                        <textarea id="batch-input" rows="10" placeholder="例如：
-张三-12345678
-李四-87654321
-王五-11223344"></textarea>
-                    </div>
-                    <div class="batch-options">
-                        <label>默认职级：
-                            <select id="batch-default-rank">
-                                ${CONSTANTS.RANKS.map(r =>
-                                    `<option value="${r}" ${r === CONSTANTS.DEFAULT_RANK ? 'selected' : ''}>${r}</option>`
-                                ).join('')}
-                            </select>
-                        </label>
+                        <label>请输入成员信息（格式：昵称+ID，每行一个）</label>
+                        <textarea id="batch-input" rows="10" placeholder="示例：\n张三+GameID_001\n李四+A1234"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn" data-action="cancel">取消</button>
-                    <button class="btn btn-primary" data-action="save">批量添加</button>
+                    <button class="btn btn-primary" data-action="save">解析并批量添加</button>
                 </div>
             </div>
         `;
@@ -42,7 +30,7 @@ class BatchAddModal {
     }
 
     bindEvents() {
-        this.container.querySelector('.modal-close').onclick = () => this.close();
+        this.container.querySelector('[data-action="close"]').onclick = () => this.close();
         this.container.querySelector('[data-action="cancel"]').onclick = () => this.close();
         this.container.querySelector('[data-action="save"]').onclick = () => this.save();
     }
@@ -55,13 +43,28 @@ class BatchAddModal {
         const errors = [];
 
         lines.forEach((line, idx) => {
-            const match = line.trim().match(/^(.+)-(\d{8})$/);
+            // 【解绑限制】：以加号为界，左侧为昵称，右侧全部作为 ID 字符串
+            const match = line.trim().match(/^([^\+]+)\+(.+)$/);
+            
             if (match) {
                 const nickname = match[1].trim();
-                const id = match[2];
-                members.push({ nickname, id });
+                const id = match[2].trim();
+                
+                if(!id) {
+                    errors.push(`第${idx + 1}行格式错误: ID不能为空`);
+                    return;
+                }
+                
+                members.push({ 
+                    nickname, 
+                    id, 
+                    rank: 'R1', 
+                    leftAlliance: true, 
+                    powerRank: null,
+                    pastNicknames: []
+                });
             } else {
-                errors.push(`第${idx + 1}行格式错误: ${line}`);
+                errors.push(`第${idx + 1}行格式错误: 请确保包含加号分割 (示例：张三+ID123)`);
             }
         });
 
@@ -69,36 +72,26 @@ class BatchAddModal {
     }
 
     save() {
-        const defaultRank = this.container.querySelector('#batch-default-rank').value;
         const { members, errors } = this.parseInput();
 
         if (errors.length > 0) {
-            alert('输入格式错误:\n' + errors.join('\n'));
-            return;
+            const proceed = confirm(`解析时发现 ${errors.length} 处格式错误：\n${errors.slice(0, 3).join('\n')}${errors.length > 3 ? '\n...' : ''}\n\n是否跳过错误行，继续添加格式正确的 ${members.length} 条数据？`);
+            if (!proceed) return;
         }
 
         if (members.length === 0) {
-            alert('请输入至少一名成员');
-            return;
+            return alert('没有解析到有效的成员数据，请检查输入格式。');
         }
-
-        const result = members.map(m => ({
-            ...m,
-            rank: defaultRank,
-            powerRank: null,
-            accounts: [],
-            leftAlliance: false,
-            pastNicknames: []
-        }));
 
         if (this.onSave) {
-            this.onSave(result);
+            this.onSave(members);
         }
+        
         this.close();
     }
 
     close() {
-        this.container.innerHTML = '';
         this.container.classList.add('hidden');
+        this.container.innerHTML = '';
     }
 }

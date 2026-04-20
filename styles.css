@@ -1,4 +1,8 @@
+/* ====================================================
+   1. CSS Variables & Reset (变量定义与初始化)
+   ==================================================== */
 :root {
+    /* 颜色系统 */
     --primary: #2563eb;
     --success: #22c55e;
     --danger: #ef4444;
@@ -6,10 +10,17 @@
     --gray-100: #f3f4f6;
     --gray-200: #e5e7eb;
     --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
     --gray-700: #374151;
     --gray-800: #1f2937;
+    
+    /* 阴影系统 */
     --shadow: 0 1px 3px rgba(0,0,0,0.1);
     --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+    
+    /* 网格基准尺寸（边长缩小50%） */
+    --cell-size: 45px; 
+    --grid-gap: 4px; /* 间隙也随之收紧，保持内聚感 */
 }
 
 * {
@@ -24,6 +35,9 @@ body {
     min-height: 100vh;
 }
 
+/* ====================================================
+   2. Macro Layout (宏观页面布局)
+   ==================================================== */
 .app {
     max-width: 1400px;
     margin: 0 auto;
@@ -42,15 +56,6 @@ body {
     align-items: center;
 }
 
-.app-header h1 {
-    font-size: 1.5rem;
-}
-
-.data-controls {
-    display: flex;
-    gap: 0.5rem;
-}
-
 .app-nav {
     background: var(--gray-200);
     padding: 0.5rem 2rem;
@@ -58,6 +63,17 @@ body {
     gap: 0.5rem;
 }
 
+.app-main {
+    flex: 1;
+    padding: 2rem;
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+/* ====================================================
+   3. Generic Components (通用组件)
+   ==================================================== */
 .nav-btn {
     padding: 0.5rem 1.5rem;
     border: none;
@@ -68,68 +84,8 @@ body {
     transition: all 0.2s;
 }
 
-.nav-btn:hover {
-    background: var(--gray-300);
-}
-
-.nav-btn.active {
-    background: var(--primary);
-    color: white;
-}
-
-.app-main {
-    flex: 1;
-    padding: 2rem;
-}
-
-.page {
-    display: none;
-}
-
-.page.active {
-    display: block;
-}
-
-.page-toolbar {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
-.toolbar-left {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.toolbar-right {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.search-box {
-    flex: 1;
-    min-width: 200px;
-}
-
-.search-box input {
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--gray-300);
-    border-radius: 0.375rem;
-    width: 100%;
-}
-
-.filter-controls {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.filter-controls select {
-    padding: 0.5rem;
-    border: 1px solid var(--gray-300);
-    border-radius: 0.375rem;
-}
+.nav-btn:hover { background: var(--gray-300); }
+.nav-btn.active { background: var(--primary); color: white; }
 
 .btn {
     padding: 0.5rem 1rem;
@@ -137,133 +93,318 @@ body {
     border-radius: 0.375rem;
     cursor: pointer;
     font-size: 0.875rem;
+    transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.9; }
+
+.btn-primary { background: var(--primary); color: white; }
+.btn-success { background: var(--success); color: white; }
+.btn-warning { background: var(--warning); color: white; }
+.btn-danger { background: var(--danger); color: white; }
+
+.page-toolbar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: center;
+}
+
+.search-box input {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--gray-300);
+    border-radius: 0.375rem;
+    min-width: 250px;
+}
+
+/* 搜索栏左侧按钮样式 */
+#btn-batch-add-tiny {
+    padding: 0.5rem 0.8rem;
+    font-weight: 900;
+    font-family: monospace;
+    margin-right: -4px; /* 紧贴搜索框 */
+    border-radius: 0.375rem 0 0 0.375rem;
+}
+
+#search-member {
+    border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.rank-R5 { background: #1b5fbe; color: #ffffff; border: 1px solid #fde68a; }
+.rank-R4 { background: #2a7cbf; color: #ffffff; border: 1px solid #bfdbfe; }
+.rank-R3 { background: #838383; color: #ffffff; border: 1px solid #bbf7d0; }
+.rank-R2 { background: #bdbdbd; color: #ffffff; border: 1px solid #e5e7eb; }
+.rank-R1 { background: #dddddd; color: #ffffff; border: 1px solid #f3f4f6; }
+
+/* ====================================================
+   4. The 10x10 Compact Grid System (核心区域布局)
+   ==================================================== */
+.compact-board {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.board-main h3, .board-pool h3 {
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+    color: var(--gray-700);
+    border-left: 4px solid var(--primary);
+    padding-left: 10px;
+}
+
+/* 主网格（在盟排位区） */
+.grid-10x10 {
+    display: grid;
+    grid-template-columns: repeat(10, var(--cell-size));
+    grid-auto-rows: var(--cell-size);
+    gap: var(--grid-gap);
+    background: var(--gray-200);
+    padding: 8px; /* 收缩外边距 */
+    border-radius: 8px;
+    user-select: none;
+    width: max-content; 
+}
+
+/* 非盟成员区（池子） */
+.out-pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--grid-gap);
+    padding: 12px;
+    background: var(--gray-100);
+    border: 2px dashed var(--gray-300);
+    border-radius: 8px;
+    min-height: calc(var(--cell-size) + 24px);
+}
+
+/* 基础槽位 */
+.compact-cell, .pool-item {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    background: transparent;
+    border: 1px dashed var(--gray-300);
+    border-radius: 4px;
+    /* 【修改点】：不再使用 Flex，改用块级排布，彻底解决内容有无导致的上下错位 */
+    display: block; 
+    position: relative;
+}
+
+/* 空白格位的“+”号淡显逻辑 */
+.compact-cell.empty {
+    cursor: cell;
+    background-color: transparent;
+    /* 增加平滑的背景色过渡，模拟建筑空间中光影的缓慢移动 */
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+/* 悬浮时：背景渐变为 R1 的浅灰色，同时显示 + 号 */
+.compact-cell.empty:hover {
+    background-color: #f9fafb; /* R1 的背景色 */
+    border-color: var(--gray-400);
+}
+
+.compact-cell.empty::before {
+    content: '+';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--gray-400);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none; /* 【关键】防止伪元素拦截点击事件 */
+}
+
+.compact-cell.empty:hover::before {
+    opacity: 0.6;
+}
+
+/* ====================================================
+   5. Member Entity Micro-Layout (成员卡片-九宫格微布局)
+   ==================================================== */
+.member-entity {
+    width: 100%;
+    height: 100%;
+    /* 移除了默认的 background: white，交由 rank-XX 控制 */
+    border-radius: 4px;
+    cursor: grab;
+    position: absolute; 
+    overflow: hidden;
+    transition: box-shadow 0.2s, filter 0.2s;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: 25% 50% 25%;
+}
+
+.member-entity:active { cursor: grabbing; }
+
+/* --- 顶部行：悬浮纯色块动作按钮 --- */
+.entity-action-grid {
+    grid-row: 1;
+    grid-column: 1 / span 3;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    opacity: 0; 
+    transition: opacity 0.2s ease-in-out;
+}
+
+/* 搜索命中高亮：使用亮黄色外发光或加粗边框 */
+.member-entity.search-match {
+    outline: 3px solid #ff00e1; /* 粉色 */
+    outline-offset: 1px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+    z-index: 5;
+}
+
+.member-entity:hover .entity-action-grid { opacity: 1; }
+
+/* 曾用名标签容器 */
+.past-nicknames-container {
+    background: var(--gray-100);
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--gray-300);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+/* 曾用名标签个体 */
+.nickname-tag {
+    background: white;
+    border: 1px solid var(--gray-300);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: var(--gray-700);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
     transition: all 0.2s;
 }
 
-.btn:hover {
-    opacity: 0.9;
-}
-
-.btn-primary {
-    background: var(--primary);
-    color: white;
-}
-
-.btn-success {
-    background: var(--success);
-    color: white;
-}
-
-.btn-warning {
-    background: var(--warning);
-    color: white;
-}
-
-.btn-danger {
+.nickname-tag:hover {
     background: var(--danger);
     color: white;
+    border-color: var(--danger);
 }
 
-.members-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
+.tag-del {
+    font-style: normal;
+    font-weight: bold;
+    opacity: 0.5;
 }
 
-.member-card {
-    border: 1px solid var(--gray-200);
-    border-radius: 0.5rem;
-    padding: 1rem;
-    background: white;
-    transition: box-shadow 0.2s;
-}
-
-.member-card:hover {
-    box-shadow: var(--shadow-lg);
-}
-
-.member-card.left-alliance {
-    border-left: 4px solid var(--danger);
-    opacity: 0.7;
-}
-
-.member-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.75rem;
-}
-
-.member-name {
-    font-weight: 600;
-    font-size: 1.125rem;
-    color: var(--gray-800);
-}
-
-.member-id {
-    color: var(--gray-700);
-    font-size: 0.875rem;
-}
-
-.member-rank-badge {
-    display: inline-block;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.rank-R5 { background: #fef3c7; color: #92400e; }
-.rank-R4 { background: #dbeafe; color: #1e40af; }
-.rank-R3 { background: #dcfce7; color: #166534; }
-.rank-R2 { background: #e5e7eb; color: #374151; }
-.rank-R1 { background: #f3f4f6; color: #6b7280; }
-
-.member-power {
-    color: var(--warning);
-    font-weight: 600;
-}
-
-.member-power-rank {
-    color: var(--warning);
-    font-size: 0.875rem;
-    margin-top: 0.25rem;
-}
-
-.member-info-row {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.875rem;
-    color: var(--gray-700);
-    margin: 0.25rem 0;
-}
-
-.member-accounts {
-    margin-top: 0.75rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid var(--gray-200);
-    font-size: 0.8rem;
-    color: var(--gray-700);
-}
-
-.member-card-actions {
-    margin-top: 0.75rem;
-    display: flex;
-    gap: 0.5rem;
-}
-
-.member-card-actions button {
+/* 标签输入框 */
+.tag-input {
+    border: none !important;
+    background: transparent !important;
+    font-size: 12px;
     flex: 1;
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
+    min-width: 60px;
+    outline: none;
 }
 
-.placeholder {
-    text-align: center;
-    padding: 4rem;
-    color: var(--gray-700);
+.tags-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
 }
 
+.grid-btn {
+    border: none;
+    cursor: pointer;
+    /* LOD策略：抹除文字和图标渲染，仅作为低频纯色信号传达功能 */
+    color: transparent; 
+    font-size: 0; 
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-green { background: var(--success); }
+.btn-yellow { background: var(--warning); }
+.btn-red { background: var(--danger); }
+.grid-btn:hover { filter: brightness(1.15); }
+
+/* --- 中间行：成员昵称 --- */
+.entity-name {
+    grid-row: 2;
+    grid-column: 1 / span 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px; 
+    font-weight: 700;
+    color: inherit; /* 【修改点】：继承职级主色调的深色 */
+    padding: 0 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- 底部行：序号与职级 --- */
+.entity-info-index {
+    grid-row: 3;
+    grid-column: 1 / span 2; 
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 2px 3px;
+    font-size: 8px; 
+    font-weight: 900;
+    color: inherit; /* 【修改点】：继承颜色 */
+    opacity: 0.35; /* 透明度降低，形成淡显水印效果 */
+}
+
+.entity-rank {
+    grid-row: 3;
+    grid-column: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px; 
+    font-weight: bold;
+    cursor: pointer;
+    /* 彻底去除背景和边框，只保留文本，通过父级的 .rank-XX 类控制整体颜色 */
+    background: transparent !important;
+    border: none !important;
+    color: inherit; 
+}
+/* 增强按钮色块的点击反馈 */
+.grid-btn:active {
+    filter: brightness(0.8);
+    transform: scale(0.9);
+}
+.entity-rank:hover { filter: brightness(0.8); } /* 鼠标悬浮变深反馈 */
+
+
+/* ====================================================
+   6. Drag & Drop States (拖放状态交互)
+   ==================================================== */
+.member-entity:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10;
+}
+
+.member-entity.dragging {
+    opacity: 0.6;
+    transform: scale(0.95);
+    z-index: 20;
+}
+
+.compact-cell.drag-over, .out-pool.drag-over {
+    background: rgba(37, 99, 235, 0.1);
+    border-color: var(--primary);
+    border-style: solid;
+}
+
+
+/* ====================================================
+   7. Modals & Overlays (弹窗与上下文菜单)
+   ==================================================== */
 .modal-container {
     position: fixed;
     inset: 0;
@@ -274,28 +415,16 @@ body {
     z-index: 1000;
 }
 
-.modal-container.hidden {
-    display: none;
-}
+.modal-container.hidden { display: none; }
 
 .modal {
     background: white;
     border-radius: 0.5rem;
     padding: 1.5rem;
-    max-width: 500px;
     width: 90%;
+    max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
-}
-
-.modal.modal-large {
-    max-width: 1200px;
-    width: 95%;
-}
-
-.modal.modal-power {
-    max-width: 1200px;
-    width: 95%;
 }
 
 .modal-header {
@@ -305,28 +434,19 @@ body {
     margin-bottom: 1rem;
 }
 
-.modal-header h2 {
-    font-size: 1.25rem;
-}
-
 .modal-close {
     background: none;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: var(--gray-700);
-}
-
-.modal-body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    color: var(--gray-400);
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    margin-bottom: 0.75rem;
 }
 
 .form-group label {
@@ -335,15 +455,10 @@ body {
     color: var(--gray-700);
 }
 
-.form-group input,
-.form-group select {
+.form-group input, .form-group select, .form-group textarea {
     padding: 0.5rem;
     border: 1px solid var(--gray-300);
     border-radius: 0.375rem;
-}
-
-.form-group input[type="checkbox"] {
-    width: auto;
 }
 
 .modal-footer {
@@ -353,211 +468,88 @@ body {
     gap: 0.5rem;
 }
 
-.accounts-list {
-    margin-top: 0.5rem;
-}
-
-.accounts-list-item {
+/* 内联弹出的职级菜单 (Inline Context Menu) */
+.inline-rank-menu {
+    position: absolute;
+    background: white;
+    border: 1px solid var(--gray-200);
+    box-shadow: var(--shadow-lg);
+    border-radius: 4px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.25rem 0.5rem;
-    background: var(--gray-100);
-    border-radius: 0.25rem;
-    margin-bottom: 0.25rem;
+    flex-direction: column;
+    z-index: 1000;
+    overflow: hidden;
 }
 
-.add-account-row {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
+.rank-item {
+    padding: 8px 24px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    border-bottom: 1px solid var(--gray-100);
+    transition: background 0.1s;
+}
+.rank-item:last-child { border-bottom: none; }
+.rank-item:hover { filter: brightness(0.9); }
+
+/* ====================================================
+   8. Utilities & Animations (功能类与动画)
+   ==================================================== */
+.hidden { display: none !important; }
+
+.placeholder {
+    text-align: center;
+    padding: 4rem;
+    color: var(--gray-400);
 }
 
-.add-account-row input {
-    flex: 1;
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--gray-300);
-    border-radius: 0.25rem;
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
 }
 
-.past-nicknames-list {
-    margin-top: 0.5rem;
-}
-
-.past-nickname-item {
+/* ====================================================
+   导航栏微交互：上下文清空按钮
+   ==================================================== */
+.nav-item {
+    position: relative; /* 确立绝对定位的参考系 */
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
-    padding: 0.25rem 0.5rem;
-    background: var(--gray-100);
-    border-radius: 0.25rem;
-    margin: 0.125rem;
-    position: relative;
 }
 
-.past-nickname-item .past-nickname-remove {
-    cursor: pointer;
-    color: var(--danger);
+.nav-clear-btn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    background: var(--danger); /* 红色危险预警 */
+    color: white;
+    font-size: 12px;
     font-weight: bold;
-}
-
-.past-nickname-item:hover {
-    background: var(--gray-200);
-}
-
-.batch-add-container {
-    margin-top: 1rem;
-}
-
-.batch-options {
+    border-radius: 50%;
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.rank-adjust-container {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem 0;
-}
-
-.rank-column {
-    flex: 1;
-    background: var(--gray-100);
-    border-radius: 0.5rem;
-    min-height: 400px;
-    display: flex;
-    flex-direction: column;
-}
-
-.rank-column-header {
-    padding: 0.75rem;
-    border-bottom: 1px solid var(--gray-300);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.rank-column-content {
-    flex: 1;
-    padding: 0.5rem;
-    min-height: 300px;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.rank-member-block {
-    padding: 0.5rem;
-    background: white;
-    border: 1px solid var(--gray-300);
-    border-radius: 0.375rem;
-    cursor: move;
-    transition: all 0.2s;
-}
-
-.rank-member-block:hover {
-    box-shadow: var(--shadow);
-}
-
-.rank-member-block.dragging {
-    opacity: 0.5;
-}
-
-.rank-column.drag-over .rank-column-content {
-    background: rgba(37, 99, 235, 0.1);
-}
-
-.rank-count {
-    font-size: 0.875rem;
-    color: var(--gray-700);
-}
-
-.power-grid {
-    display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    gap: 4px;
-    padding: 1rem;
-}
-
-.power-slot {
-    border: 1px solid var(--gray-300);
-    border-radius: 0.25rem;
-    min-height: 60px;
-    display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    position: relative;
+    cursor: pointer;
+    
+    /* 默认隐身并缩小 */
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 带有一点弹性效果 */
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);
 }
 
-.power-number {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    font-size: 0.75rem;
-    color: var(--gray-700);
-    font-weight: bold;
+/* 鼠标悬浮在 Tab 区域时，显现红叉 */
+.nav-item:hover .nav-clear-btn {
+    opacity: 1;
+    transform: scale(1);
 }
 
-.power-member-block {
-    width: 100%;
-    padding: 0.25rem;
-    background: var(--primary);
-    color: white;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    text-align: center;
-    cursor: move;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.power-member-block .member-block-nickname {
-    font-weight: 500;
-}
-
-.power-member-block .member-block-id {
-    font-size: 0.625rem;
-    opacity: 0.8;
-}
-
-.power-slot.drag-over {
-    background: rgba(37, 99, 235, 0.1);
-    border-color: var(--primary);
-}
-
-.unassigned-members {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: var(--gray-100);
-    border-radius: 0.5rem;
-    min-height: 100px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-}
-
-.unassigned-members.drag-over {
-    background: rgba(37, 99, 235, 0.1);
-}
-
-.member-block-nickname {
-    font-weight: 500;
-}
-
-.member-block-id {
-    font-size: 0.625rem;
-    opacity: 0.8;
-}
-
-.power-grid-100 {
-    display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    gap: 4px;
-    padding: 8px;
-    border: 1px solid var(--gray-300);
-    border-radius: 8px;
+/* 鼠标悬浮在红叉自身时，进一步放大提示 */
+.nav-clear-btn:hover {
+    filter: brightness(1.2);
+    transform: scale(1.15);
 }

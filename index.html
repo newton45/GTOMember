@@ -9,50 +9,36 @@
 <body>
     <div class="app">
         <header class="app-header">
-            <h1>GTO成员管理系统</h1>
+            <h1>GTO管理系统</h1>
             <div class="data-controls">
                 <button id="btn-export" class="btn btn-primary">导出JSON</button>
                 <button id="btn-import" class="btn btn-primary">导入JSON</button>
                 <input type="file" id="file-import" accept=".json" hidden>
-                <button id="btn-clear" class="btn btn-danger">清空数据</button>
             </div>
         </header>
 
         <nav class="app-nav">
-            <button class="nav-btn active" data-page="members">成员管理</button>
-            <button class="nav-btn" data-page="activities">活动管理</button>
+            <div class="nav-item">
+                <button class="nav-btn active" data-page="members">成员管理</button>
+                <div class="nav-clear-btn" data-target="members" title="清空该页数据">&times;</div>
+            </div>
+            
+            <div class="nav-item">
+                <button class="nav-btn" data-page="activities">活动管理</button>
+                <div class="nav-clear-btn" data-target="activities" title="清空该页数据">&times;</div>
+            </div>
         </nav>
 
         <main class="app-main">
             <div id="page-members" class="page active">
                 <div class="page-toolbar">
                     <div class="toolbar-left">
-                        <button id="btn-add-member" class="btn btn-success">+ 新建成员</button>
-                        <button id="btn-batch-add" class="btn btn-primary">批量新增</button>
+                        <button id="btn-batch-add-tiny" class="btn btn-primary" title="批量新增成员 (昵称+ID)">+++</button>
                     </div>
                     <div class="search-box">
-                        <input type="text" id="search-member" placeholder="搜索成员...">
+                        <input type="text" id="search-member" placeholder="搜索成员... ( 局部昵称 / ID / 曾用名 / 职级.如R5 等 )" style="min-width: 380px;">
                     </div>
-                    <div class="toolbar-right">
-                        <button id="btn-rank-adjust" class="btn btn-warning">职级调整</button>
-                        <button id="btn-power-adjust" class="btn btn-warning">战力调整</button>
                     </div>
-                    <div class="filter-controls">
-                        <select id="filter-rank">
-                            <option value="">全部职级</option>
-                            <option value="R5">R5</option>
-                            <option value="R4">R4</option>
-                            <option value="R3">R3</option>
-                            <option value="R2">R2</option>
-                            <option value="R1">R1</option>
-                        </select>
-                        <select id="filter-status">
-                            <option value="">全部状态</option>
-                            <option value="false">在盟</option>
-                            <option value="true">离盟</option>
-                        </select>
-                    </div>
-                </div>
                 <div class="members-grid" id="members-grid"></div>
             </div>
 
