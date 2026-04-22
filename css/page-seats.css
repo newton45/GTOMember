@@ -1,0 +1,160 @@
+/* ====================================================
+   沙盘视觉控制中心 (Visual Control Center)
+   ==================================================== */
+:root {
+    --map-bg-color: #ffffff; 
+    --map-grid-color: rgba(200, 200, 200, 0.3); 
+
+    --seat-s1-color: #ff6f00; 
+    --seat-s2-color: #ff0000; 
+    --seat-s3-color: #ba0000; 
+    --seat-s4-color: #660000; 
+
+    --size-coord-text: 8px;  
+    --size-level-text: 8px;  
+    --size-entity-text: 12px; 
+    --size-trap-text: 20px;   
+
+    --color-coord-text: rgba(255, 255, 255, 0.688); 
+    --color-level-text: rgba(0, 0, 0, 1); 
+    --color-trap-text: var(--gray-800);     
+
+    /* 预览框颜色 */
+    --preview-safe-fill: rgba(124, 124, 124, 0.1);
+    --preview-safe-stroke: rgb(0, 0, 0);
+    --preview-danger-fill: rgba(5, 5, 5, 0.4);
+    --preview-danger-stroke: red;
+
+    /* 6. 座位底板填充透明度控制 */
+    --seat-bg-opacity: 70%; /* 👈 修改这里即可全局控制所有座位的深浅 (设为 0% 即为完全透明) */
+    --seat-border-color: rgba(255, 255, 255, 0.8);
+}
+
+/* ====================================================
+   底层样式渲染引擎
+   ==================================================== */
+.page-seats { height: calc(100vh - 150px); display: flex; flex-direction: column; background: #111827; }
+.seat-map-wrapper { flex: 1; position: relative; overflow: hidden; border-radius: 0 0 8px 8px; }
+
+.seat-viewport { 
+    width: 100%; height: 100%; overflow: hidden; 
+    background: var(--map-bg-color); 
+    position: relative; 
+    cursor: default; /* 改为普通指针，因为不再允许拖拽 */
+}
+
+.seat-canvas { position: absolute; width: 3000px; height: 3000px; transform-origin: 0 0; }
+.seat-svg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+
+/* UI 层：本身不吃点击，让点击穿透到画布触发新建座位 */
+.seat-ui-layer { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+    pointer-events: none; 
+    z-index: 2; 
+}
+
+/* 1. 熊陷阱中心文字 (熊1) - 获得悬浮放大与点击交互权 */
+.text-trap-center { 
+    position: absolute; 
+    transform: translate(-50%, -50%); 
+    font-size: var(--size-trap-text); 
+    font-weight: 900; 
+    color: var(--color-trap-text); 
+    z-index: 100 !important; /* 强制置顶，绝不被遮挡 */
+    pointer-events: auto !important; /* 强制开启交互 */
+    cursor: pointer;
+    white-space: nowrap; 
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s;
+}
+
+.text-trap-center:hover {
+    transform: translate(-50%, -50%) scale(1.6); /* 鼠标滑过放大 1.6 倍 */
+    color: var(--primary); /* 滑过变色提示可点击 */
+}
+
+/* 2. 熊陷阱坐标文字 - 剥离交互，变为纯净的水印展示 */
+.text-trap-coord { 
+    position: absolute; 
+    transform: translate(-50%, -50%); 
+    font-family: monospace; 
+    font-size: 11px; 
+    font-weight: bold; 
+    color: var(--gray-700); 
+    opacity: 0.7; 
+    z-index: 5; 
+    pointer-events: none !important; /* 彻底关闭点击，让出鼠标焦点 */
+}
+
+/* 水印级别 */
+.text-seat-level { position: absolute; transform: translate(-50%, -50%); font-size: var(--size-level-text); font-weight: 900; color: var(--color-level-text); pointer-events: none; z-index: 5; }
+
+/* 座位坐标 */
+.text-seat-coord { position: absolute; transform: translate(-50%, -50%); font-size: var(--size-coord-text); font-weight: bold; color: var(--color-coord-text); pointer-events: none; z-index: 5; white-space: nowrap; }
+
+/* ====================================================
+   城堡交互实体（名字卡片 / +号）核心引擎
+   ==================================================== */
+
+/* 1. 基础卡片（已有成员）：白底、实线边框、可拖拽 */
+.seat-interactive-entity {
+    position: absolute; 
+    transform: translate(-50%, -50%);
+    background: white; 
+    border: 2px solid; 
+    border-radius: 4px;
+    padding: 2px 6px; 
+    font-weight: bold; 
+    cursor: pointer; 
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
+    transition: all 0.3s ease;
+    pointer-events: auto !important; /* 【核心】：必须显式开启，否则无法点击和拖拽 */
+    white-space: nowrap;
+    font-size: var(--size-entity-text);
+}
+
+/* 2. 空座位（常态）：彻底透明，只有淡淡的+号 */
+.seat-interactive-entity.empty-plus { 
+    width: 22px; 
+    height: 22px; 
+    padding: 0; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 16px; 
+    color: rgba(0, 0, 0, 0.3) !important; 
+    background: transparent !important;   
+    border-color: transparent !important; 
+    
+    box-shadow: none; 
+}
+
+/* 3. 空座位（悬停）：浮出白底和虚线框 */
+.seat-interactive-entity.empty-plus:hover { 
+    background: white !important; 
+    border-color: rgba(0, 0, 0, 1) !important; 
+     
+    color: rgba(0, 0, 0, 0.8) !important; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
+}
+
+/* 4. 基础卡片及所有实体的统一悬停放大 */
+.seat-interactive-entity:hover { 
+    transform: translate(-50%, -50%) scale(1.4); 
+    border-style: solid !important; 
+    z-index: 20; 
+}
+
+/* 5. 拖拽时的半透明状态（让鼠标穿透到下方网格） */
+.seat-interactive-entity.dragging { 
+    opacity: 0.5; 
+    pointer-events: none !important; 
+}
+
+
+.seat-poly { transition: stroke-width 0.2s, filter 0.2s; }
+.seat-poly.highlight { stroke-width: 4px; filter: brightness(1.5) drop-shadow(0 0 6px rgba(255,255,255,0.8)); }
+.map-seat-entity.highlight { transform: translate(-50%, -50%) scale(1.15); filter: brightness(1.2); box-shadow: 0 0 15px rgba(255,255,255,0.8); z-index: 20; }
+
+@keyframes flashRed { 0% { fill: rgba(239, 68, 68, 0.8); } 100% { fill: rgba(239, 68, 68, 0.3); } }
+.preview-flash { animation: flashRed 0.3s ease-out 2; }

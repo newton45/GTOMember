@@ -1,0 +1,36 @@
+/* ====================================================
+   Variables & Reset (变量定义与初始化)
+   ==================================================== */
+:root {
+    /* 颜色系统 */
+    --primary: #000000;
+    --success: #5cbd80;
+    --danger: #d47765;
+    --warning: #d6b377;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    
+    /* 阴影系统 */
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+    
+    /* 网格基准尺寸 */
+    --cell-size: 45px; 
+    --grid-gap: 4px; 
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--gray-100);
+    min-height: 100vh;
+}

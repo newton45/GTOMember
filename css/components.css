@@ -1,0 +1,58 @@
+/* ====================================================
+   Generic Components (通用组件)
+   ==================================================== */
+.nav-btn {
+    padding: 0.5rem 1.5rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 0.375rem;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+.nav-btn:hover { background: var(--gray-300); }
+.nav-btn.active { background: var(--primary); color: white; }
+
+.btn {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    transition: opacity 0.2s;
+}
+.btn:hover { opacity: 0.9; }
+
+.btn-primary { background: var(--primary); color: white; }
+.btn-success { background: var(--success); color: white; }
+.btn-warning { background: var(--warning); color: white; }
+.btn-danger { background: var(--danger); color: white; }
+
+/* 搜索栏与工具栏 */
+.page-toolbar { display: flex; gap: 1rem; margin-bottom: 1.5rem; align-items: center; }
+.search-box input { padding: 0.5rem 1rem; border: 1px solid var(--gray-300); border-radius: 0.375rem; min-width: 250px; }
+#btn-batch-add-tiny { padding: 0.5rem 0.8rem; font-weight: 900; font-family: monospace; margin-right: -4px; border-radius: 0.375rem 0 0 0.375rem; }
+#search-member { border-radius: 0 0.375rem 0.375rem 0; }
+
+/* 职级配色 */
+.rank-R5 { background: #0b3154; color: #ffffff; border: 2px solid #ffffff; }
+.rank-R4 { background: #19507d; color: #ffffff; border: 2px solid #ffffff; }
+.rank-R3 { background: #808082; color: #ffffff; border: 2px solid #ffffff; }
+.rank-R2 { background: #aaaaaa; color: #ffffff; border: 2px solid #ffffff; }
+.rank-R1 { background: #d1d1d1; color: #ffffff; border: 2px solid #ffffff; }
+
+/* 弹窗与上下文菜单 */
+.modal-container { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+.modal-container.hidden { display: none; }
+.modal { background: white; border-radius: 0.5rem; padding: 1.5rem; width: 90%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--gray-400); }
+.form-group { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 0.75rem; }
+.form-group label { font-size: 0.875rem; font-weight: 500; color: var(--gray-700); }
+.form-group input, .form-group select, .form-group textarea { padding: 0.5rem; border: 1px solid var(--gray-300); border-radius: 0.375rem; }
+.modal-footer { margin-top: 1rem; display: flex; justify-content: flex-end; gap: 0.5rem; }
+
+.inline-rank-menu { position: absolute; background: white; border: 1px solid var(--gray-200); box-shadow: var(--shadow-lg); border-radius: 4px; display: flex; flex-direction: column; z-index: 1000; overflow: hidden; }
+.rank-item { padding: 8px 24px; font-size: 12px; font-weight: bold; cursor: pointer; text-align: center; border-bottom: 1px solid var(--gray-100); transition: background 0.1s; }
+.rank-item:last-child { border-bottom: none; }
+.rank-item:hover { filter: brightness(0.9); }

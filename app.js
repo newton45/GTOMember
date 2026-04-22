@@ -7,11 +7,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!document.getElementById('page-activities')) {
             throw new Error("HTML缺失：找不到 id 为 'page-activities' 的容器！");
         }
+        // 【新增探针】：座位管理容器探测
+        if (!document.getElementById('page-seats')) {
+            throw new Error("HTML缺失：找不到 id 为 'page-seats' 的容器！");
+        }
 
         // --- 类文件探测 (排查 JS 脚本引入缺失) ---
         if (typeof DataManager === 'undefined') throw new Error("脚本缺失：找不到 DataManager 类，请检查 dataManager.js 是否正确引入。");
         if (typeof MembersPage === 'undefined') throw new Error("脚本缺失：找不到 MembersPage 类。");
         if (typeof ActivitiesPage === 'undefined') throw new Error("脚本缺失：找不到 ActivitiesPage 类，请检查 activitiesPage.js 是否引入。");
+        // 【新增探针】：座位管理脚本探测
+        if (typeof SeatPage === 'undefined') throw new Error("脚本缺失：找不到 SeatPage 类，请检查 seatPage.js 是否引入。");
 
         // 1. 初始化核心数据引擎
         const dataManager = new DataManager();
@@ -20,20 +26,39 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. 挂载页面控制器 (Controller)
         const membersPage = new MembersPage(dataManager, modalContainer);
         const activitiesPage = new ActivitiesPage(dataManager, modalContainer);
+        const seatPage = new SeatPage(dataManager, modalContainer);
 
         // 3. 页面切换逻辑 (Router)
         const navButtons = document.querySelectorAll('.nav-btn');
         const pages = document.querySelectorAll('.page');
 
+        // 【新增】：从本地缓存读取上次最后访问的页面，如果没有则默认停留 'page-members'
+        const lastActivePage = localStorage.getItem('App_lastActivePage') || 'page-members';
+
+        // 初始化：根据缓存状态，点亮对应的按钮和显示对应的页面
+        navButtons.forEach(btn => {
+            const targetId = btn.dataset.target || `page-${btn.dataset.page}`;
+            btn.classList.toggle('active', targetId === lastActivePage);
+        });
+        pages.forEach(p => {
+            p.classList.toggle('active', p.id === lastActivePage);
+        });
+
+        // 绑定点击事件，并在每次点击时存档
         navButtons.forEach(btn => {
             btn.onclick = () => {
-                const targetPage = btn.dataset.page;
+                // 兼容旧版的 data-page 和新版的 data-target
+                const targetId = btn.dataset.target || `page-${btn.dataset.page}`;
+                
                 navButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
 
                 pages.forEach(p => {
-                    p.classList.toggle('active', p.id === `page-${targetPage}`);
+                    p.classList.toggle('active', p.id === targetId);
                 });
+
+                // 【新增】：将当前页面的 ID 存入本地缓存
+                localStorage.setItem('App_lastActivePage', targetId);
             };
         });
 

@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <link rel="stylesheet" href="css/variables.css">
+    
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    
+    <link rel="stylesheet" href="css/page-members.css">
+    <link rel="stylesheet" href="css/page-activities.css">
+    <link rel="stylesheet" href="css/page-seats.css">
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GTO成员管理系统</title>
@@ -27,6 +36,9 @@
                 <button class="nav-btn" data-page="activities">活动管理</button>
                 <div class="nav-clear-btn" data-target="activities" title="清空该页数据">&times;</div>
             </div>
+
+            <button class="nav-btn" data-target="page-seats">座位管理</button>
+
         </nav>
 
         <main class="app-main">
@@ -47,6 +59,9 @@
                     <p>活动管理功能开发中...</p>
                 </div>
             </div>
+
+            <div id="page-seats" class="page"></div>
+
         </main>
 
         <div id="modal-container" class="modal-container hidden"></div>
@@ -77,6 +92,12 @@
     <script src="ui/components/teamAllocationModal.js"></script>
     <script src="ui/components/clearHistoryModal.js"></script>
     <script src="ui/components/battleResultModal.js"></script>
+
+    <script src="ui/pages/seatPage.js"></script>
+    <script src="ui/components/seatSelectorModal.js"></script>
+    <script src="ui/components/levelSelectorModal.js"></script> 
+    <script src="ui/pages/seatPage.js"></script>
+
     <script src="app.js"></script>
 </body>
 </html>

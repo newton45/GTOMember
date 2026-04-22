@@ -1,0 +1,75 @@
+/* ====================================================
+   Macro Layout (宏观页面布局)
+   ==================================================== */
+.app {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header {
+    background: var(--gray-800);
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.app-nav {
+    background: var(--gray-200);
+    padding: 0.5rem 2rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.app-main {
+    flex: 1;
+    padding: 2rem;
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+/* 导航栏微交互 */
+.nav-item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.nav-clear-btn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    background: var(--danger);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);
+}
+
+.nav-item:hover .nav-clear-btn { opacity: 1; transform: scale(1); }
+.nav-clear-btn:hover { filter: brightness(1.2); transform: scale(1.15); }
+
+.hidden { display: none !important; }
+.placeholder { text-align: center; padding: 4rem; color: var(--gray-400); }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+}
