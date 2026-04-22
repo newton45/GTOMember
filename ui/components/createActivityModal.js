@@ -14,16 +14,7 @@ class CreateActivityModal {
                 <div class="modal-body">
                     <div class="form-group">
                         <label>活动名称</label>
-                        <input type="text" id="new-act-name" value="周三战役" placeholder="请输入活动名称">
-                    </div>
-                    <div class="form-group" style="margin-top: 15px;">
-                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                            <input type="checkbox" id="new-act-team2"> 
-                            <strong>同时开启副场活动 (团2)</strong>
-                        </label>
-                        <p style="font-size: 12px; color: var(--gray-400); margin-top: 5px; margin-left: 20px;">
-                            勾选后将自动生成团2的沙盘与待选框。
-                        </p>
+                        <input type="text" id="new-act-name" value="周末战役" placeholder="请输入活动名称">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -37,7 +28,6 @@ class CreateActivityModal {
         this.container.classList.remove('hidden');
         this.bindEvents();
         
-        // 自动聚焦到输入框并全选文字，方便直接修改
         const nameInput = this.container.querySelector('#new-act-name');
         if (nameInput) {
             nameInput.focus();
@@ -51,12 +41,11 @@ class CreateActivityModal {
         
         this.container.querySelector('[data-action="save"]').onclick = () => {
             const name = this.container.querySelector('#new-act-name').value.trim();
-            const hasTeam2 = this.container.querySelector('#new-act-team2').checked;
-            
             if (!name) return alert('活动名称不能为空');
             
             if (this.onSave) {
-                this.onSave({ name, hasTeam2 });
+                // 默认强制生成团1和团2
+                this.onSave({ name, hasTeam2: true });
             }
             this.close();
         };

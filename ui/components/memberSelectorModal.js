@@ -5,14 +5,11 @@ class MemberSelectorModal {
         this.selectedIds = new Set();
     }
 
-    /**
-     * @param {Array} availableMembers 可选成员列表（已过滤掉已在组内的人）
-     */
     render(availableMembers) {
         this.selectedIds.clear();
         
         const html = `
-            <div class="modal modal-selector">
+            <div class="modal modal-selector modal-large">
                 <div class="modal-header">
                     <h2>选择成员入组</h2>
                     <button class="modal-close" data-action="close">&times;</button>
@@ -39,10 +36,10 @@ class MemberSelectorModal {
     }
 
     generateGridHtml(members) {
-        if (members.length === 0) return '<div class="placeholder">暂无可分配成员</div>';
+        if (members.length === 0) return '<div class="placeholder" style="width:100%;">该团暂无可分配成员</div>';
         
         return members.map(m => `
-            <div class="member-entity rank-${m.rank} selector-item" data-id="${m.id}">
+            <div class="member-entity rank-${m.rank} selector-item" data-id="${m.id}" style="position: relative; width: var(--cell-size); height: var(--cell-size);">
                 <div class="entity-name">${m.nickname}</div>
                 <div class="entity-info-index">${m.powerRank || ''}</div>
                 <div class="entity-rank">${m.rank}</div>
@@ -54,7 +51,6 @@ class MemberSelectorModal {
         this.container.querySelector('[data-action="close"]').onclick = () => this.close();
         this.container.querySelector('[data-action="cancel"]').onclick = () => this.close();
         
-        // 点击选择逻辑
         const grid = this.container.querySelector('#selector-member-grid');
         grid.onclick = (e) => {
             const item = e.target.closest('.selector-item');
@@ -63,7 +59,7 @@ class MemberSelectorModal {
             const id = item.dataset.id;
             if (this.selectedIds.has(id)) {
                 this.selectedIds.delete(id);
-                item.classList.remove('search-match'); // 复用搜索高亮的样式
+                item.classList.remove('search-match'); 
             } else {
                 this.selectedIds.add(id);
                 item.classList.add('search-match');
@@ -71,7 +67,6 @@ class MemberSelectorModal {
             this.container.querySelector('#count-num').innerText = this.selectedIds.size;
         };
 
-        // 搜索过滤逻辑
         const searchInput = this.container.querySelector('#selector-search-input');
         searchInput.oninput = (e) => {
             const q = e.target.value.toLowerCase();

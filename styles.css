@@ -692,57 +692,482 @@ body {
 }
 
 /* ====================================================
-   上下文穿透：在活动页面修改成员卡片外观
+   上下文穿透：在活动页面与弹窗修改成员卡片外观
    ==================================================== */
-.page-activities .member-entity {
-    width: 45px; height: 45px; /* 强制保持紧凑尺寸 */
+/* 核心修复：强制解除绝对定位，并严格锁定 45x45 正方形尺寸 */
+.page-activities .member-entity,
+.modal-container .member-entity {
+    width: var(--cell-size) !important; 
+    height: var(--cell-size) !important; 
+    position: relative !important; 
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;    
+    margin: 0 !important;
+    display: grid !important; /* 保持九宫格布局 */
+    flex-shrink: 0 !important; /* 【关键】绝对禁止被 Flex 容器挤压成矩形 */
 }
 
 /* 覆写左下角：战果平均排名 */
-.page-activities .avg-rank-label {
-    font-size: 7px;
+.page-activities .avg-rank-label,
+.page-activities .entity-info-index {
+    font-size: 7px !important;
     opacity: 0.8;
 }
 
 /* 覆写右下角：出勤率 */
-.page-activities .attendance-rate-label {
-    font-size: 7px;
+.page-activities .attendance-rate-label,
+.page-activities .entity-rank {
+    font-size: 7px !important;
     color: inherit;
     font-weight: 800;
 }
 
 /* 组长样式：黑色加粗边框 */
 .page-activities .leader-style {
-    outline: 2px solid #000;
+    outline: 2px solid #000 !important;
     z-index: 5;
 }
 
-/* 移除按钮：红色圆圈 */
+/* 移除按钮：红色圆圈 (右上角外挂) */
 .btn-remove-circle {
     position: absolute;
-    top: -2px;
-    right: -2px;
-    width: 12px;
-    height: 12px;
+    top: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
     background: var(--danger);
     color: white;
     border-radius: 50%;
-    font-size: 8px;
-    display: none; /* 默认隐藏 */
+    font-size: 10px;
+    display: none; 
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    z-index: 10;
 }
 
 .member-entity:hover .btn-remove-circle { display: flex; }
 
-/* 隐藏原本的九宫格按钮，只保留移出 */
+/* 隐藏原本的红黄绿九宫格按钮，活动页只保留移出 */
 .page-activities .entity-action-grid {
     background: transparent;
     opacity: 1;
 }
 .page-activities .entity-action-grid button { display: none; }
 
-/* 文案导出区 */
-.export-section { margin-top: 40px; border-top: 2px solid var(--gray-200); padding-top: 20px; }
-#export-text { width: 100%; height: 150px; font-family: monospace; }
+
+/* ====================================================
+   活动管理终极单团布局补丁
+   ==================================================== */
+
+/* 全宽组卡片 */
+.activity-group-full {
+    width: 100%;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    position: relative; /* 确立绝对定位参考系，让红叉有处落脚 */
+}
+
+/* 组标题行布局 */
+.group-title-row {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+/* 组名：占宽 25% */
+.group-name-edit {
+    width: 25%; /* 【核心修复】：改为 25% */
+    border: none;
+    border-bottom: 1px dashed var(--gray-300);
+    padding: 4px 8px;
+    font-weight: bold;
+    font-size: 14px;
+    background: transparent;
+    outline: none;
+}
+
+/* 小组说明：占据剩余的 75% */
+.group-desc-edit {
+    flex: 1; /* flex:1 会自动吃掉剩下的所有空间 */
+    border: none;
+    border-bottom: 1px dashed var(--gray-300);
+    padding: 4px 8px;
+    font-size: 12px;
+    color: var(--gray-700);
+    background: transparent;
+    outline: none;
+}
+
+.group-name-edit:focus, .group-desc-edit:focus {
+    border-bottom-color: var(--primary);
+}
+
+/* 悬浮隐藏的红色删除叉 (右上角外挂) */
+.btn-group-del {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 22px;
+    height: 22px;
+    background: var(--danger);
+    color: white;
+    border-radius: 50%;
+    display: none; 
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.activity-group-full:hover .btn-group-del {
+    display: flex;
+}
+
+/* 【防跳动 & 蓝框对齐修复】：重构成员行的盒模型 */
+.group-members-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    /* 统一四周的内边距，让蓝框有空间包裹所有卡片 */
+    padding: 8px; 
+    /* 用负的外边距把这 8px 抵消掉，保证视觉上和上面的标题依然左对齐 */
+    margin: 8px -8px -8px -8px; 
+    align-items: center;
+    border-radius: 8px;
+    /* 【核心防抖】：提前用透明边框占位！拖入时只改变颜色，不改变体积，彻底消灭上下跳动 */
+    border: 2px solid transparent; 
+    transition: background 0.2s, border-color 0.2s;
+}
+
+/* 修复拖放视觉反馈：防止蓝框错位、改变容器大小 */
+.group-members-row.drag-over,
+.waiting-pool.drag-over {
+    background: rgba(37, 99, 235, 0.08) !important;
+    border-color: var(--primary) !important; /* 只变色，不增加像素 */
+    box-shadow: none !important;
+    outline: none !important;
+}
+/* 顺手把待选池也加上透明占位，防止拖入池子时也发生跳动 */
+.waiting-pool {
+    border: 2px solid transparent;
+    transition: background 0.2s, border-color 0.2s;
+}
+
+
+/* 添加组员的虚线方块（严格保持 45x45 的小方块） */
+.add-member-square, 
+.add-member-cell {
+    width: var(--cell-size) !important;
+    height: var(--cell-size) !important;
+    border: 2px dashed var(--gray-300);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: #fafafa;
+    flex-shrink: 0; /* 【关键】防止被挤压 */
+}
+
+.add-member-square::after, 
+.add-member-cell::after { 
+    content: '+'; 
+    font-size: 24px; 
+    color: #999; 
+}
+
+.add-member-square:hover, 
+.add-member-cell:hover { 
+    background: #eee; 
+    border-color: var(--primary); 
+}
+
+/* 头部现代化排版 */
+.canvas-header-modern {
+    display: none;
+}
+
+.act-desc-textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px;
+    border: 1px solid var(--gray-200);
+    border-radius: 4px;
+    font-size: 14px;
+    resize: vertical;
+}
+
+.btn-xs { padding: 2px 6px; font-size: 11px; }
+
+.team-switcher { display: flex; gap: 5px; margin-bottom: 10px; }
+
+.team-tabs { display: flex; gap: 8px; }
+
+.btn-tab {
+    padding: 6px 20px;
+    border: 2px solid var(--primary);
+    background: transparent;
+    color: var(--primary);
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.btn-tab:hover { background: rgba(37, 99, 235, 0.1); }
+.btn-tab.active { background: var(--primary); color: white; }
+
+.groups-list {
+    display: flex;
+    flex-direction: column; 
+    gap: 15px;
+}
+
+/* 待选池横向排列打包 */
+.waiting-pool {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    background: var(--gray-100);
+    border-radius: 8px;
+    min-height: 65px;
+}
+
+/* 人员选择器弹窗内部网格打包 */
+.selector-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--grid-gap);
+    padding: 10px;
+    background: var(--gray-200);
+    border-radius: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+
+/* ====================================================
+   活动管理页面：标题行布局重构
+   ==================================================== */
+
+.team-sub-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 0 5px;
+}
+
+.team-nav-group {
+    display: flex;
+    gap: 5px;
+}
+
+/* 团切换按钮微调，使其更适应标题行高度 */
+.team-nav-group .btn-tab {
+    padding: 4px 12px;
+    font-size: 13px;
+    border-radius: 4px;
+}
+
+/* 活动全局说明：样式对齐小组说明 */
+.activity-desc-inline {
+    flex: 1;
+    border: none;
+    border-bottom: 1px dashed var(--gray-300);
+    padding: 4px 8px;
+    font-size: 13px;
+    color: var(--gray-700);
+    background: transparent;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.activity-desc-inline:focus {
+    border-bottom-color: var(--primary);
+    border-bottom-style: solid;
+}
+
+.team-ops {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* 确保按钮在同一高度 */
+.team-ops .btn-xs {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+
+/* ====================================================
+   活动管理页面：微交互与拖放动画深度补丁
+   ==================================================== */
+
+/* 强制开启溢出显示，确保上方的“组长徽章”不被切断 */
+.page-activities .member-entity {
+    overflow: visible !important;
+}
+
+/* 动效：组长专属徽章（默认隐身并在下方潜伏） */
+.leader-badge {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: #111;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 带弹性的位移动画 */
+    pointer-events: none;
+    z-index: 20;
+    white-space: nowrap;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* 当成为组长时：徽章平滑上升浮现 */
+.page-activities .leader-style .leader-badge {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* 蓝箭头跨团按钮 (替代池子中的红叉) */
+.btn-switch-team {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 14px;
+    height: 14px;
+    background: var(--primary); /* 蓝色 */
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+    display: none; 
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    font-family: monospace; /* 确保箭头居中 */
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* 悬停时显示蓝箭头或红十字 */
+.member-entity:hover .btn-switch-team { 
+    display: flex; 
+}
+
+.btn-switch-team:hover { filter: brightness(1.2); transform: scale(1.1); }
+
+
+.member-entity.dragging {
+    opacity: 0.5;
+    transform: scale(0.9);
+    box-shadow: 0 10px 15px rgba(0,0,0,0.2);
+}
+
+/* ====================================================
+   活动管理：卡片四角信息与交互按钮覆写
+   ==================================================== */
+
+/* 四角信息绝对定位保护 */
+.top-left-badge {
+    grid-row: 1; 
+    grid-column: 1;
+    display: flex; 
+    align-items: flex-start; 
+    justify-content: flex-start;
+    font-size: 8px; 
+    padding: 2px 3px; 
+    line-height: 1; 
+    opacity: 0.8;
+}
+
+.top-right-badge {
+    grid-row: 1; 
+    grid-column: 3;
+    display: flex; 
+    align-items: flex-start; 
+    justify-content: flex-end;
+    font-size: 8px; 
+    padding: 2px 3px; 
+    line-height: 1; 
+    font-weight: bold;
+}
+
+.page-activities .entity-info-index, 
+.modal-container .entity-info-index {
+    grid-row: 3; 
+    grid-column: 1 / span 2;
+    display: flex; 
+    align-items: flex-end; 
+    justify-content: flex-start;
+    font-size: 8px !important; 
+    padding: 2px 3px; 
+    line-height: 1; 
+    opacity: 0.8;
+}
+
+.page-activities .entity-rank, 
+.modal-container .entity-rank {
+    grid-row: 3; 
+    grid-column: 3;
+    display: flex; 
+    align-items: flex-end; 
+    justify-content: flex-end;
+    font-size: 8px !important; 
+    padding: 2px 3px; 
+    line-height: 1; 
+    font-weight: 800;
+}
+
+/* 全新的蓝色移出组按钮 (居中向下箭头) */
+.btn-remove-down {
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 14px;
+    background: var(--primary); /* 蓝色 */
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+    display: none; 
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    line-height: 1;
+    font-weight: bold;
+}
+
+.member-entity:hover .btn-remove-down { 
+    display: flex; 
+}
+
+.btn-remove-down:hover { 
+    filter: brightness(1.2); 
+    transform: translateX(-50%) scale(1.1); 
+}
+
+/* 隐藏旧版红圈移出按钮 */
+.btn-remove-circle {
+    display: none !important;
+}
