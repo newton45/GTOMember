@@ -131,14 +131,24 @@ class MembersPage {
     // 修改成员框的九宫格渲染逻辑
     renderMemberContent(member, isPool = false, isMatch = false) {
         const powerIdx = member.powerRank || '';
+        
+        // 【核心逻辑】：根据所在区域动态生成双按钮，并自带 title 悬停提示
+        const actionButtons = !isPool 
+            ? `
+                <button class="grid-btn btn-green" data-action="edit" title="编辑"></button>
+                <button class="grid-btn btn-yellow" data-action="out" title="移出"></button>
+              `
+            : `
+                <button class="grid-btn btn-green" data-action="edit" title="编辑"></button>
+                <button class="grid-btn btn-red" data-action="delete" title="删除"></button>
+              `;
+
         // 【修改点】：如果匹配，增加 search-match 类
         return `
             <div class="member-entity rank-${member.rank} ${isMatch ? 'search-match' : ''}" 
                  draggable="true" data-id="${member.id}" data-ispool="${isPool}">
                 <div class="entity-action-grid">
-                    <button class="grid-btn btn-green" data-action="edit"></button>
-                    <button class="grid-btn btn-yellow" data-action="out"></button>
-                    <button class="grid-btn btn-red" data-action="delete"></button>
+                    ${actionButtons}
                 </div>
                 <div class="entity-name">${member.nickname || '未命名'}</div>
                 <div class="entity-info-index">${!isPool ? powerIdx : ''}</div>

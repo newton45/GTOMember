@@ -13,8 +13,8 @@ class BatchAddModal {
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label>请输入成员信息（格式：昵称+ID，每行一个）</label>
-                        <textarea id="batch-input" rows="10" placeholder="示例：\n张三+GameID_001\n李四+A1234"></textarea>
+                        <label>请输入成员信息（格式：昵称+ID，或仅昵称，每行一个）</label>
+                        <textarea id="batch-input" rows="10" placeholder="示例：\n张三+GameID_001\n李四+A1234\n王五"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -35,41 +35,53 @@ class BatchAddModal {
         this.container.querySelector('[data-action="save"]').onclick = () => this.save();
     }
 
-    parseInput() {
-        const input = this.container.querySelector('#batch-input').value.trim();
-        const lines = input.split('\n').filter(line => line.trim());
+    // 修改 parseInput 方法中的解析逻辑
+parseInput() {
+    const input = this.container.querySelector('#batch-input').value.trim();
+    const lines = input.split('\n').filter(line => line.trim());
 
-        const members = [];
-        const errors = [];
+    const members = [];
+    const errors = [];
 
-        lines.forEach((line, idx) => {
-            // 【解绑限制】：以加号为界，左侧为昵称，右侧全部作为 ID 字符串
-            const match = line.trim().match(/^([^\+]+)\+(.+)$/);
+    lines.forEach((line, idx) => {
+        const trimmedLine = line.trim();
+        let nickname = '';
+        let id = '';
+
+        // 修改正则：使加号及其后的部分变为可选
+        // ^([^\+]+) 匹配昵称
+        // (?:\+(.*))? 可选地匹配加号及其后的所有内容
+        const match = trimmedLine.match(/^([^\+]+)(?:\+(.*))?$/);
+        
+        if (match) {
+            nickname = match[1].trim();
+            id = match[2] ? match[2].trim() : '';
             
-            if (match) {
-                const nickname = match[1].trim();
-                const id = match[2].trim();
-                
-                if(!id) {
-                    errors.push(`第${idx + 1}行格式错误: ID不能为空`);
-                    return;
-                }
-                
-                members.push({ 
-                    nickname, 
-                    id, 
-                    rank: 'R1', 
-                    leftAlliance: true, 
-                    powerRank: null,
-                    pastNicknames: []
-                });
-            } else {
-                errors.push(`第${idx + 1}行格式错误: 请确保包含加号分割 (示例：张三+ID123)`);
+            if(!nickname) {
+                errors.push(`第${idx + 1}行格式错误: 昵称不能为空`);
+                return;
             }
-        });
+            
+            // 生成带有“空缺”前缀的 6 位随机序列号
+            const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const sentinelId = `空缺_${randomSuffix}`;
 
-        return { members, errors };
-    }
+            members.push({ 
+                nickname, 
+                // 如果用户没填 ID，则使用哨兵 ID
+                id: id || sentinelId, 
+                rank: 'R1', 
+                leftAlliance: true, 
+                powerRank: null,
+                pastNicknames: []
+            });
+        } else {
+            errors.push(`第${idx + 1}行格式错误`);
+        }
+    });
+
+    return { members, errors };
+}
 
     save() {
         const { members, errors } = this.parseInput();

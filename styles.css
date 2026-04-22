@@ -3,10 +3,10 @@
    ==================================================== */
 :root {
     /* 颜色系统 */
-    --primary: #2563eb;
-    --success: #22c55e;
-    --danger: #ef4444;
-    --warning: #f59e0b;
+    --primary: #000000;
+    --success: #5cbd80;
+    --danger: #d47765;
+    --warning: #d6b377;
     --gray-100: #f3f4f6;
     --gray-200: #e5e7eb;
     --gray-300: #d1d5db;
@@ -129,11 +129,11 @@ body {
     border-radius: 0 0.375rem 0.375rem 0;
 }
 
-.rank-R5 { background: #1b5fbe; color: #ffffff; border: 1px solid #fde68a; }
-.rank-R4 { background: #2a7cbf; color: #ffffff; border: 1px solid #bfdbfe; }
-.rank-R3 { background: #838383; color: #ffffff; border: 1px solid #bbf7d0; }
-.rank-R2 { background: #bdbdbd; color: #ffffff; border: 1px solid #e5e7eb; }
-.rank-R1 { background: #dddddd; color: #ffffff; border: 1px solid #f3f4f6; }
+.rank-R5 { background: #0b3154; color: #ffffff; border: 2px solid #ffffff; }
+.rank-R4 { background: #19507d; color: #ffffff; border: 2px solid #ffffff; }
+.rank-R3 { background: #808082; color: #ffffff; border: 2px solid #ffffff; }
+.rank-R2 { background: #aaaaaa; color: #ffffff; border: 2px solid #ffffff; }
+.rank-R1 { background: #d1d1d1; color: #ffffff; border: 2px solid #ffffff; }
 
 /* ====================================================
    4. The 10x10 Compact Grid System (核心区域布局)
@@ -246,7 +246,7 @@ body {
     grid-row: 1;
     grid-column: 1 / span 3;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     opacity: 0; 
     transition: opacity 0.2s ease-in-out;
 }
@@ -701,11 +701,12 @@ body {
     height: var(--cell-size) !important; 
     position: relative !important; 
     left: auto !important;
-    top: auto !important;
-    transform: none !important;    
+    top: auto !important;    
     margin: 0 !important;
     display: grid !important; /* 保持九宫格布局 */
     flex-shrink: 0 !important; /* 【关键】绝对禁止被 Flex 容器挤压成矩形 */
+    will-change: transform;
+    z-index: 1;
 }
 
 /* 覆写左下角：战果平均排名 */
@@ -726,7 +727,7 @@ body {
 /* 组长样式：黑色加粗边框 */
 .page-activities .leader-style {
     outline: 2px solid #000 !important;
-    z-index: 5;
+    z-index: 10 !important;
 }
 
 /* 移除按钮：红色圆圈 (右上角外挂) */
@@ -1039,6 +1040,17 @@ body {
     z-index: 20;
     white-space: nowrap;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    pointer-events: none;
+    backface-visibility: hidden;
+}
+/* 删某人记录弹窗里的列表样式 */
+.selector-option-item:hover {
+    background-color: var(--gray-50);
+}
+
+.selector-option-item input[type="checkbox"]:checked + label {
+    font-weight: bold;
+    color: var(--primary);
 }
 
 /* 当成为组长时：徽章平滑上升浮现 */
@@ -1170,4 +1182,106 @@ body {
 /* 隐藏旧版红圈移出按钮 */
 .btn-remove-circle {
     display: none !important;
+}
+
+/* ====================================================
+   出勤率悬浮气泡提示与底部导出区排版更新
+   ==================================================== */
+
+/* 出勤率蓝色虚线与提示触发器 */
+.attendance-tooltip-trigger {
+    color: var(--primary);
+    border-bottom: 1px dashed var(--primary);
+    cursor: help;
+    position: relative;
+    font-weight: bold;
+}
+
+/* 纯 CSS 悬浮框 (利用 \A 实现换行) */
+.attendance-tooltip-trigger::after {
+    content: "出勤率说明：近三场内\A 扣分<=0.5：好（最多请假一次）\A 扣分<=1.5：中（最多缺席1次+请假1次）\A 扣分<=2.5：差（最多缺席两次+请假一次）\A 扣分=3：死（三场全缺席）";
+    white-space: pre-wrap;
+    position: absolute;
+    left: 0;
+    top: 100%;
+    margin-top: 8px;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.6;
+    width: 250px;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-weight: normal;
+}
+
+.attendance-tooltip-trigger:hover::after {
+    opacity: 1;
+}
+
+/* 导出文案区：复制按钮在左，自适应文本框在右，上下高度齐平 */
+.export-section {
+    display: flex;
+    align-items: stretch; /* 强制拉伸子元素，实现上下对齐 */
+    gap: 15px;
+    margin-top: 20px;
+    padding: 15px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+}
+
+.export-section .btn-copy {
+    width: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: bold;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.export-section .export-textarea {
+    flex: 1;
+    resize: vertical; /* 允许在需要时纵向拉伸 */
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.6;
+    outline: none;
+    background: #f9fafb;
+    color: var(--gray-800);
+    font-family: inherit;
+}
+
+.export-section .export-textarea:focus {
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* ====================================================
+   修补项：在盟排位区 - 左下角战力排名颜色与基线对齐
+   ==================================================== */
+
+/* 针对在盟排位区（10x10网格）的左下角数字 */
+#compact-grid .entity-info-index {
+    color: #ffffff !important;   /* 强制纯白色 */
+    opacity: 1 !important;       /* 移除之前的半透明水印效果 */
+    line-height: 1 !important;   /* 统一下部基线 */
+    padding-bottom: 3px !important; /* 锁定底部间距 */
+}
+
+/* 同步锁定右下角职级的基线，确保左右绝对水平对齐 */
+#compact-grid .entity-rank {
+    line-height: 1 !important;
+    padding-bottom: 3px !important;
 }

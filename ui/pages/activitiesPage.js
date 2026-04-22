@@ -1,14 +1,17 @@
 class ActivitiesPage {
     constructor(dataManager, modalContainer) {
+        
         this.dataManager = dataManager;
         this.container = document.getElementById('page-activities');
         this.modalContainer = modalContainer;
 
+        this.renameActModal = new RenameActivityModal(modalContainer);
         this.createActModal = new CreateActivityModal(modalContainer);
         this.selectorModal = new MemberSelectorModal(modalContainer);
         this.allocationModal = new TeamAllocationModal(modalContainer);
         this.clearHistoryModal = new ClearHistoryModal(modalContainer);
         this.battleModal = new BattleResultModal(modalContainer);
+        
 
         this.currentActivityId = null;
         this.currentTeamTab = 1;
@@ -58,53 +61,72 @@ class ActivitiesPage {
     }
 
     // --- 核心：FLIP 动画引擎 (平滑阵列移动) ---
-    applyStateWithAnimation(logicFn) {
+    // --- 完善后的 FLIP 动画管线 ---
+    applyStateWithAnimation(logicFn, dragData = null) {
         if (this.isAnimating) return;
         this.isAnimating = true;
 
         const canvas = this.container.querySelector('.activity-canvas');
         const scrollTop = canvas ? canvas.scrollTop : 0;
 
-        // F: First - 记录当前所有卡片坐标
         const entities = Array.from(this.container.querySelectorAll('.member-entity'));
-        const firstRects = new Map();
-        entities.forEach(el => firstRects.set(el.dataset.id, el.getBoundingClientRect()));
+        const firstPositions = new Map();
+        
+        entities.forEach(el => {
+            // 【核心修复】：如果当前元素是刚刚松手的那个，强行用鼠标计算出的真实悬浮坐标替代老 DOM 坐标
+            if (dragData && dragData.draggedId === el.dataset.id) {
+                firstPositions.set(el.dataset.id, {
+                    left: dragData.dropEvent.clientX - dragData.dragOffset.x,
+                    top: dragData.dropEvent.clientY - dragData.dragOffset.y
+                });
+            } else {
+                firstPositions.set(el.dataset.id, el.getBoundingClientRect());
+            }
+        });
 
-        // 执行数据修改并重绘
         logicFn();
         this.dataManager.save();
         this.render();
-
+        
         const newCanvas = this.container.querySelector('.activity-canvas');
         if (newCanvas) newCanvas.scrollTop = scrollTop;
 
-        // L: Last & I: Invert & P: Play
-        const newEntities = Array.from(this.container.querySelectorAll('.member-entity'));
-        newEntities.forEach(el => {
-            const oldRect = firstRects.get(el.dataset.id);
-            if (oldRect) {
-                const newRect = el.getBoundingClientRect();
-                const dx = oldRect.left - newRect.left;
-                const dy = oldRect.top - newRect.top;
+        const lastEntities = Array.from(this.container.querySelectorAll('.member-entity'));
+        
+        lastEntities.forEach(el => {
+            const firstPos = firstPositions.get(el.dataset.id);
+            if (firstPos) {
+                const lastPos = el.getBoundingClientRect();
+                const dx = firstPos.left - lastPos.left;
+                const dy = firstPos.top - lastPos.top;
+
                 if (dx !== 0 || dy !== 0) {
-                    el.style.transition = 'none';
-                    el.style.transform = `translate(${dx}px, ${dy}px)`;
+                    el.style.setProperty('transition', 'none', 'important');
+                    el.style.setProperty('transform', `translate(${dx}px, ${dy}px)`, 'important');
+
                     requestAnimationFrame(() => {
                         void el.offsetHeight;
-                        el.style.transition = 'transform 350ms cubic-bezier(0.25, 0.8, 0.25, 1)';
-                        el.style.transform = 'translate(0, 0)';
+                        el.style.setProperty('transition', 'transform 400ms cubic-bezier(0.25, 0.8, 0.25, 1)', 'important');
+                        el.style.setProperty('transform', 'translate(0, 0)', 'important');
                     });
                 }
             } else {
-                el.style.animation = 'fadeIn 300ms ease'; // 新加入的卡片淡入
+                el.style.setProperty('opacity', '0', 'important');
+                requestAnimationFrame(() => {
+                    el.style.setProperty('transition', 'opacity 400ms ease', 'important');
+                    el.style.setProperty('opacity', '1', 'important');
+                });
             }
         });
 
         setTimeout(() => {
-            const finalEntities = Array.from(this.container.querySelectorAll('.member-entity'));
-            finalEntities.forEach(el => { el.style.transition = ''; el.style.transform = ''; });
+            lastEntities.forEach(el => {
+                el.style.removeProperty('transition');
+                el.style.removeProperty('transform');
+                el.style.removeProperty('opacity');
+            });
             this.isAnimating = false;
-        }, 400);
+        }, 450);
     }
 
     render() {
@@ -122,8 +144,9 @@ class ActivitiesPage {
                         <select id="activity-selector">
                             ${activities.map(a => `<option value="${a.id}" ${a.id === this.currentActivityId ? 'selected' : ''}>${a.name}</option>`).join('')}
                         </select>
-                        <button class="btn-square btn-primary" data-action="add-act">+</button>
-                        ${act ? `<button class="btn-square btn-danger" data-action="delete-act">&times;</button>` : ''}
+                        <button class="btn-square btn-primary" data-action="add-act" title="新建活动">+</button>
+                        ${act ? `<button class="btn-square btn-warning" data-action="rename-act" style="font-size: 14px;" title="重命名活动">R</button>` : ''}
+                        ${act ? `<button class="btn-square btn-danger" data-action="delete-act" title="删除活动">&times;</button>` : ''}
                     </div>
                 </div>
 
@@ -135,16 +158,16 @@ class ActivitiesPage {
     }
 
     renderActivityDetail(act) {
-    return `
-        <div class="team-content-area">
-            ${this.renderTeam(act, this.currentTeamTab)}
-        </div>
+        return `
+            <div class="team-content-area">
+                ${this.renderTeam(act, this.currentTeamTab)}
+            </div>
 
-        <div class="export-section">
-            <textarea id="export-text" readonly>${this.generateExportText(act)}</textarea>
-            <button class="btn btn-primary" data-action="copy-text">复制文本</button>
-        </div>
-    `;
+            <div class="export-section">
+                <button class="btn btn-primary btn-copy" data-action="copy-text">复制</button>
+                <textarea id="export-text" class="export-textarea" readonly>${this.generateExportText(act)}</textarea>
+            </div>
+        `;
     }
 
     renderTeam(act, teamNum) {
@@ -264,6 +287,7 @@ class ActivitiesPage {
     initDragAndDrop() {
         let draggedMemberId = null;
         let dragSource = null;
+        let dragOffset = { x: 0, y: 0 }; // 【新增】：记录鼠标点击位置与卡片左上角的偏差坐标
 
         this.container.addEventListener('dragstart', (e) => {
             const entity = e.target.closest('.member-entity');
@@ -273,6 +297,12 @@ class ActivitiesPage {
                     team: parseInt(entity.dataset.sourceTeam),
                     groupIndex: entity.dataset.sourceGroup 
                 };
+                
+                // 【核心逻辑】：记录抓取时，鼠标处于卡片内部的什么位置
+                const rect = entity.getBoundingClientRect();
+                dragOffset.x = e.clientX - rect.left;
+                dragOffset.y = e.clientY - rect.top;
+
                 setTimeout(() => entity.classList.add('dragging'), 0);
             }
         });
@@ -308,6 +338,7 @@ class ActivitiesPage {
             const act = this.dataManager.activities.findById(this.currentActivityId);
             if (!act) return;
 
+            // 【核心逻辑】：将拖拽松手的事件(e)、拖动的ID和偏差，全套传递给动画引擎
             this.applyStateWithAnimation(() => {
                 const sourceTeamObj = dragSource.team === 1 ? act.team1 : act.team2;
                 if (dragSource.groupIndex === 'pool') {
@@ -327,7 +358,7 @@ class ActivitiesPage {
                         targetTeamObj.groups[targetGIdx].memberIds.push(draggedMemberId);
                     }
                 }
-            });
+            }, { dropEvent: e, draggedId: draggedMemberId, dragOffset: dragOffset });
         });
     }
 
@@ -347,6 +378,12 @@ class ActivitiesPage {
             } else if (e.target.dataset.field) {
                 act[e.target.dataset.field] = e.target.value;
                 this.dataManager.save();
+            }
+
+            // 【新增】：打字时实时更新最底部的导出文本框
+            const exportArea = this.container.querySelector('#export-text');
+            if (exportArea) {
+                exportArea.value = this.generateExportText(act);
             }
         });
 
@@ -448,6 +485,15 @@ class ActivitiesPage {
                     };
                     this.clearHistoryModal.render(this.dataManager.members.getAll());
                     break;
+                case 'rename-act':
+                    if (!act) return;
+                    this.renameActModal.onSave = (newName) => {
+                        act.name = newName;
+                        // 修改后立即刷新，底部的导出文案也会同步更新
+                        this.saveAndRefresh();
+                    };
+                    this.renameActModal.render(act.name);
+                    break;
             }
         });
     }
@@ -499,5 +545,41 @@ class ActivitiesPage {
         this.battleModal.render(act, { name: `团${this.currentTeamTab}全员`, memberIds: allIds }, this.dataManager.members.getAll());
     }
 
-    generateExportText(act) { return ""; }
+    generateExportText(act) {
+        if (!act) return "";
+        const teamNum = this.currentTeamTab;
+        const team = teamNum === 1 ? act.team1 : act.team2;
+        
+        // 1. 处理活动头部：【活动名-团x】
+        const headerTitle = `【${act.name}-团${teamNum}】`;
+        const actDesc = (act.description && act.description.trim() !== '') ? act.description.trim() : '';
+        
+        // 如果没有活动说明，不写“：”，直接换行
+        let text = actDesc ? `${headerTitle}：${actDesc}\n` : `${headerTitle}\n`;
+
+        // 2. 处理各组数据
+        team.groups.forEach(g => {
+            const members = g.memberIds.map(id => this.dataManager.members.findById(id)).filter(Boolean);
+            const leader = members.find(m => m.id === g.leaderId);
+            const others = members.filter(m => m.id !== g.leaderId).map(m => m.nickname).join('、');
+            
+            // 组长与成员使用 " - " 连接
+            let memberStrs = [];
+            if (leader) memberStrs.push(`组长 - ${leader.nickname}`);
+            if (others) memberStrs.push(`成员 - ${others}`);
+            const memberText = memberStrs.join('；');
+
+            const gDesc = (g.description && g.description.trim() !== '' && g.description !== '无') ? g.description.trim() : '';
+            
+            if (gDesc) {
+                // 有小组说明时：组名行之后，组员另起一行
+                text += `【${g.name}】：${gDesc}\n${memberText}\n`;
+            } else {
+                // 无小组说明时：组员直接紧跟在组名冒号之后
+                text += `【${g.name}】：${memberText}\n`;
+            }
+        });
+        
+        return text.trim();
+    }
 }

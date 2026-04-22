@@ -23,8 +23,12 @@ class BattleResultModal {
                     <button class="modal-close" data-action="close">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p style="font-size:13px; color:var(--gray-700); margin-bottom:15px;">
-                        在下方拖拽卡片进行战果排序（自左向右即为名次先后）。不参战的人员请拖入对应的“请假”或“缺席”池。
+                    <p style="font-size:13px; color:var(--gray-700); margin-bottom:15px; line-height: 1.6;">
+                        在下方拖拽卡片进行战果排序（自左向右即为名次先后）。<br>
+                        报但未参战人员请拖入对应的“请假/少人时替补未到”或“缺席”池。<br>
+                        成员卡片 左上角 为近三场平均活动排名；<br>
+                        成员卡片 右上角 为近三场<span class="attendance-tooltip-trigger">出勤率</span>；<br>
+                        成员卡片 左下角 为盟内实力排名
                     </p>
                     
                     <h4 style="margin-bottom: 8px; border-left: 3px solid var(--primary); padding-left: 8px;">战果排名 (自左向右排列)</h4>
@@ -32,7 +36,7 @@ class BattleResultModal {
                         ${this.renderList(members)}
                     </div>
 
-                    <h4 style="margin-bottom: 8px; border-left: 3px solid var(--warning); padding-left: 8px; color: var(--gray-700);">请假，出勤率-0.5</h4>
+                    <h4 style="margin-bottom: 8px; border-left: 3px solid var(--warning); padding-left: 8px; color: var(--gray-700);">请假，或少人时替补未到，出勤率-0.5</h4>
                     <div class="group-members-row sortable-list" id="list-leave" data-drop-target="leave" style="min-height: 70px; background: var(--gray-50); border: 1px dashed var(--warning); margin-bottom: 25px;">
                         </div>
 
