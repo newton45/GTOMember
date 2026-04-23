@@ -9,7 +9,10 @@ class SeatPage {
         
         this.currentTab = localStorage.getItem('SeatPage_currentTab') || 'bear1';
         this.config = { tileSize: 30, angle: 35.28, renderRadius: 35, showGrid: true };
-        this.anchor = { x: 150, y: 150 };
+        this.anchors = { 
+            bear1: { x: 760, y: 610 }, 
+            bear2: { x: 748, y: 616 } 
+        };
 
         this.dragState = { seatId: null, hasMoved: false, startPos: null };
         this.uiLocked = false; 
@@ -22,7 +25,8 @@ class SeatPage {
     saveData() {
         try {
             localStorage.setItem('SeatPage_seatData', JSON.stringify(this.dataManager.seatData));
-            localStorage.setItem('SeatPage_anchor', JSON.stringify(this.anchor));
+            // 修改点：保存整个 anchors 对象
+            localStorage.setItem('SeatPage_anchors', JSON.stringify(this.anchors));
         } catch(e) {}
         if (this.dataManager && this.dataManager.save) this.dataManager.save();
     }
@@ -31,8 +35,12 @@ class SeatPage {
         try {
             const sd = localStorage.getItem('SeatPage_seatData');
             if (sd) this.dataManager.seatData = JSON.parse(sd);
-            const sa = localStorage.getItem('SeatPage_anchor');
-            if (sa) this.anchor = JSON.parse(sa);
+            
+            // 修改点：尝试读取复数形式的 anchors
+            const sa = localStorage.getItem('SeatPage_anchors');
+            if (sa) {
+                this.anchors = JSON.parse(sa);
+            }
         } catch(e) {}
 
         if (!this.dataManager.seatData) {
@@ -116,13 +124,27 @@ class SeatPage {
     renderSkeleton() {
         this.container.innerHTML = `
             <div class="activities-layout-vertical page-seats">
-                <div class="activity-topbar">
-                    <div class="topbar-left">
-                        <span class="topbar-label">当前地图：</span>
-                        <div class="team-tabs" id="seat-map-tabs">
-                            <button class="btn-tab" data-action="switch-tab" data-tab="bear1">熊 1</button>
-                            <button class="btn-tab" data-action="switch-tab" data-tab="bear2">熊 2</button>
+                <div class="activity-topbar" style="flex-direction: column; align-items: flex-start; gap: 15px; height: auto;">
+                    <div class="topbar-left" style="display: flex; align-items: center; gap: 30px; width: 100%; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="topbar-label">当前地图：</span>
+                            <div class="team-tabs" id="seat-map-tabs">
+                                <button class="btn-tab" data-action="switch-tab" data-tab="bear1">熊 1</button>
+                                <button class="btn-tab" data-action="switch-tab" data-tab="bear2">熊 2</button>
+                            </div>
                         </div>
+                        <div class="trap-coord-inputs" style="display: flex; align-items: center; gap: 10px; font-weight: bold; color: var(--gray-700);">
+                            <span>当前陷阱位置：</span>
+                            <span>x=<input type="number" id="input-anchor-x" value="${this.anchors[this.currentTab].x}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
+                            <span>y=<input type="number" id="input-anchor-y" value="${this.anchors[this.currentTab].y}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
+                        </div>
+                    </div>
+                    <div class="seat-instructions" style="font-size: 13px; color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 10px 15px; border-radius: 6px; width: 100%; line-height: 1.6;">
+                        <b>说明：</b><br>
+                        点击空白位置可新建空座位。<br>
+                        拖动座位可改变其位置。<br>
+                        点击中间位置可替换成员。<br>
+                        拖动座位至熊陷阱处可删除该座位。
                     </div>
                 </div>
                 <div class="seat-map-wrapper">
@@ -150,6 +172,9 @@ class SeatPage {
         const trapData = this.dataManager.seatData[this.currentTab];
         const lvlMap = { 's1': '1', 's2': '2', 's3': '3', 's4': '4' };
 
+        // 【关键】：获取当前标签页对应的坐标锚点
+        const currentAnchor = this.anchors[this.currentTab];
+
         let seatPolygonsHTML = ''; 
         let seatEntitiesHTML = ''; 
 
@@ -162,7 +187,9 @@ class SeatPage {
 
             seatPolygonsHTML += `<polygon id="poly-${seat.id}" class="seat-poly" points="${sp}" fill="color-mix(in srgb, ${themeVar} var(--seat-bg-opacity, 20%), transparent)" stroke="var(--seat-border-color, rgba(0,0,0,0.8))" stroke-width="2"/>`;
             seatEntitiesHTML += `<div class="text-seat-level" style="left:${scLevel.x}px; top:${scLevel.y}px;">${lvlMap[seat.level] || '1'}</div>`;
-            seatEntitiesHTML += `<div class="text-seat-coord" style="left:${scCoord.x}px; top:${scCoord.y}px;">${seat.x + this.anchor.x},${seat.y + this.anchor.y}</div>`;
+            
+            // 【排错修复】：使用 currentAnchor.x，确保不报错
+            seatEntitiesHTML += `<div class="text-seat-coord" style="left:${scCoord.x}px; top:${scCoord.y}px;">${seat.x + currentAnchor.x},${seat.y + currentAnchor.y}</div>`;
             
             if (seat.memberId) {
                 const memName = this.dataManager.members.findById(seat.memberId)?.nickname;
@@ -182,7 +209,8 @@ class SeatPage {
             <div class="seat-ui-layer">
                 ${seatEntitiesHTML}
                 <div class="text-trap-center" id="trap-center-text" data-action="edit-coord" title="点击修改中心坐标" style="left:${bearCenter.x}px; top:${bearCenter.y}px;">${bearName}</div>
-                <div class="text-trap-coord" style="left:${coordCenter.x}px; top:${coordCenter.y}px;">${this.anchor.x},${this.anchor.y}</div>
+                
+                <div class="text-trap-coord" style="left:${coordCenter.x}px; top:${coordCenter.y}px;">${currentAnchor.x},${currentAnchor.y}</div>
             </div>
         `;
     }
@@ -221,35 +249,83 @@ class SeatPage {
         const preview = this.container.querySelector('#build-preview');
         const trapTextEl = this.container.querySelector('#trap-center-text');
 
-        // 【核心修复】：DOM 防抖！只有当内容真的需要变化时才写入，保护正在被点击的文字节点存活！
         const defaultTrapText = this.currentTab === 'bear1' ? '熊 1' : '熊 2';
         const deleteTrapText = '<span style="color:#ef4444; font-size:16px;">触碰则删除</span>';
 
         if (this.dragState.seatId) {
-            if (preview) {
-                preview.setAttribute('points', this.getPolygonPoints(grid.x, grid.y, 2, 2));
-                preview.style.display = 'block';
+            const trapData = this.dataManager.seatData[this.currentTab];
+            const seatData = trapData.seats.find(s => s.id === this.dragState.seatId);
+            const draggedEntity = this.container.querySelector(`.seat-interactive-entity[data-seat-id="${this.dragState.seatId}"]`);
+            const draggedPoly = this.container.querySelector(`#poly-${this.dragState.seatId}`);
+
+            if (preview && seatData) {
                 const coll = this.checkCollision(grid.x, grid.y, this.dragState.seatId);
-                
+                preview.dataset.gx = grid.x; 
+                preview.dataset.gy = grid.y;
+
                 if (coll.trapHit) {
+                    // 1. 触碰陷阱：吸附到陷阱中心，变红并缩小透明，暗示将被吞噬
                     if (trapTextEl && trapTextEl.innerHTML !== deleteTrapText) trapTextEl.innerHTML = deleteTrapText;
+                    if (draggedEntity) {
+                        const trapCenter = this.toScreen(1.5, 1.5);
+                        draggedEntity.style.left = `${trapCenter.x}px`;
+                        draggedEntity.style.top = `${trapCenter.y}px`;
+                        draggedEntity.style.opacity = '0.3';
+                        draggedEntity.style.transform = 'translate(-50%, -50%) scale(0.6)';
+                        draggedEntity.style.borderColor = 'var(--danger)';
+                        draggedEntity.style.color = 'var(--danger)';
+                    }
+                    if (draggedPoly) draggedPoly.style.opacity = '0';
                     preview.style.display = 'none';
-                    preview.dataset.valid = 'false';
+                    preview.dataset.valid = 'false'; 
                 } else {
                     if (trapTextEl && trapTextEl.innerHTML !== defaultTrapText) trapTextEl.innerHTML = defaultTrapText;
+                    
                     if (coll.seatHits.length > 0) {
+                        // 2. 位置不可行（重叠）：城堡自动飞回原位，且红框随鼠标显示
+                        if (draggedEntity) {
+                            const origCenter = this.toScreen(seatData.x + 1, seatData.y + 1);
+                            draggedEntity.style.left = `${origCenter.x}px`;
+                            draggedEntity.style.top = `${origCenter.y}px`;
+                            draggedEntity.style.opacity = '1';
+                            draggedEntity.style.transform = 'translate(-50%, -50%) scale(1)'; 
+                            draggedEntity.style.borderColor = ''; // 清除内联变色
+                            draggedEntity.style.color = '';
+                        }
+                        if (draggedPoly) {
+                            draggedPoly.setAttribute('points', this.getPolygonPoints(seatData.x, seatData.y, 2, 2));
+                            draggedPoly.style.opacity = '1';
+                        }
+                        
+                        // 开启红色预览框
+                        preview.setAttribute('points', this.getPolygonPoints(grid.x, grid.y, 2, 2));
+                        preview.style.display = 'block';
                         preview.style.fill = 'var(--preview-danger-fill, rgba(239, 68, 68, 0.4))'; 
                         preview.style.stroke = 'var(--preview-danger-stroke, red)';
                         preview.dataset.valid = 'false';
                     } else {
-                        preview.style.fill = 'var(--preview-safe-fill, rgba(255, 255, 255, 0.5))'; 
-                        preview.style.stroke = 'var(--preview-safe-stroke, white)';
-                        preview.dataset.valid = 'true'; 
+                        // 3. 位置可行：城堡实体平滑吸附到新网格
+                        if (draggedEntity) {
+                            const newCenter = this.toScreen(grid.x + 1, grid.y + 1);
+                            draggedEntity.style.left = `${newCenter.x}px`;
+                            draggedEntity.style.top = `${newCenter.y}px`;
+                            draggedEntity.style.opacity = '0.85';
+                            draggedEntity.style.transform = 'translate(-50%, -50%) scale(1.1)'; // 拖拽时稍微放大
+                            draggedEntity.style.borderColor = '';
+                            draggedEntity.style.color = '';
+                        }
+                        if (draggedPoly) {
+                            draggedPoly.setAttribute('points', this.getPolygonPoints(grid.x, grid.y, 2, 2));
+                            draggedPoly.style.opacity = '0.5';
+                        }
+                        
+                        preview.style.display = 'none';
+                        preview.dataset.valid = 'true';
                     }
                 }
-                preview.dataset.gx = grid.x; preview.dataset.gy = grid.y;
             }
         } else {
+            // ----- 非拖拽状态 -----
             if (trapTextEl && trapTextEl.innerHTML !== defaultTrapText) trapTextEl.innerHTML = defaultTrapText;
             
             const onTrap = grid.x >= 0 && grid.x < 3 && grid.y >= 0 && grid.y < 3;
@@ -295,6 +371,12 @@ class SeatPage {
                 this.dragState.hasMoved = false;
                 this.dragState.startPos = { x: e.clientX, y: e.clientY };
                 seatEntity.classList.add('dragging');
+                
+                // 【核心修复】：移除上一版强加的 transition='none'，
+                // 让 CSS 引擎重新接管插值计算，实现网格间的平滑滑动。
+                const poly = this.container.querySelector(`#poly-${this.dragState.seatId}`);
+                seatEntity.style.transition = '';
+                if (poly) poly.style.transition = '';
             }
         });
 
@@ -304,7 +386,9 @@ class SeatPage {
             this.lastMousePos = { x: e.clientX, y: e.clientY };
             
             if (this.dragState.seatId) {
-                if (Math.hypot(e.clientX - this.dragState.startPos.x, e.clientY - this.dragState.startPos.y) > 5) this.dragState.hasMoved = true;
+                if (Math.hypot(e.clientX - this.dragState.startPos.x, e.clientY - this.dragState.startPos.y) > 5) {
+                    this.dragState.hasMoved = true;
+                }
             }
             this.processHover(e.clientX, e.clientY);
         });
@@ -314,45 +398,67 @@ class SeatPage {
 
             if (this.dragState.seatId) {
                 let treatedAsClick = false;
+                let needsImmediateUpdate = true; // 控制是否立即重绘画布（销毁DOM）
 
                 if (this.dragState.hasMoved) {
-                    const preview = this.container.querySelector('#build-preview');
-                    let actualMove = false;
-                    
-                    if (preview && preview.style.display !== 'none') {
-                        const gx = parseInt(preview.dataset.gx);
-                        const gy = parseInt(preview.dataset.gy);
-                        const trapData = this.dataManager.seatData[this.currentTab];
+                    const canvas = this.container.querySelector('#seat-canvas');
+                    const rect = canvas.getBoundingClientRect();
+                    const grid = this.toGrid(e.clientX - rect.left, e.clientY - rect.top);
+                    const trapData = this.dataManager.seatData[this.currentTab];
+                    const coll = this.checkCollision(grid.x, grid.y, this.dragState.seatId);
+                    const draggedEntity = this.container.querySelector(`.seat-interactive-entity[data-seat-id="${this.dragState.seatId}"]`);
+
+                    if (coll.trapHit) {
+                        // 1. 落入陷阱：播放缩放消失的终端动画，延迟 250ms 后执行真实的数据销毁
+                        if (draggedEntity) {
+                            draggedEntity.style.transform = 'translate(-50%, -50%) scale(0)';
+                            draggedEntity.style.opacity = '0';
+                        }
+                        needsImmediateUpdate = false;
                         
-                        const coll = this.checkCollision(gx, gy, this.dragState.seatId);
-                        
-                        if (coll.trapHit) {
-                            actualMove = true;
+                        setTimeout(() => {
                             const seat = trapData.seats.find(s => s.id === this.dragState.seatId);
                             if (seat && seat.memberId) trapData.unseated.push(seat.memberId);
                             trapData.seats = trapData.seats.filter(s => s.id !== this.dragState.seatId);
                             this.saveData();
-                        } else if (preview.dataset.valid === 'true') {
-                            const seat = trapData.seats.find(s => s.id === this.dragState.seatId);
-                            if (seat && (seat.x !== gx || seat.y !== gy)) {
-                                actualMove = true;
-                                seat.x = gx; seat.y = gy; this.saveData(); 
-                            }
+                            this.updateMap();
+                        }, 250); 
+                        
+                    } else if (coll.seatHits.length === 0) {
+                        // 2. 正常落入空地
+                        const seat = trapData.seats.find(s => s.id === this.dragState.seatId);
+                        if (seat && (seat.x !== grid.x || seat.y !== grid.y)) {
+                            seat.x = grid.x; seat.y = grid.y; 
+                            this.saveData(); 
                         }
+                    } else {
+                        // 3. 落点无效（重叠）：暂停重绘，给它 250ms 时间飞回原位
+                        needsImmediateUpdate = false;
+                        setTimeout(() => {
+                            this.updateMap();
+                        }, 250);
                     }
-                    if (!actualMove) treatedAsClick = true;
                 } else {
                     treatedAsClick = true;
                 }
 
                 if (treatedAsClick) this.openSelectorModal({ type: 'replace', seatId: this.dragState.seatId });
                 
+                const currentDraggedId = this.dragState.seatId;
                 this.dragState.seatId = null;
                 this.dragState.hasMoved = false;
-                this.updateMap(); 
+                
+                if (needsImmediateUpdate) {
+                    this.updateMap(); 
+                } else {
+                    // 如果不立即重绘（处于动画期），提前移除 dragging 类让卡片恢复颜色，显得更自然
+                    const entity = this.container.querySelector(`.seat-interactive-entity[data-seat-id="${currentDraggedId}"]`);
+                    if (entity) entity.classList.remove('dragging');
+                }
                 return;
             }
 
+            // 处理空白区域创建新城堡的逻辑
             const viewport = e.target.closest('#seat-viewport');
             if (viewport && !this.dragState.hasMoved && !e.target.closest('[data-action]') && !e.target.closest('.seat-interactive-entity')) {
                 const preview = this.container.querySelector('#build-preview');
@@ -400,8 +506,8 @@ class SeatPage {
         this.selectorModal.render(unseatedMembers, seatedMembers);
     }
 
+    // 修改 bindEvents 方法
     bindEvents() {
-        // 使用拦截捕获模式，保障最高优先级执行点击
         this.container.addEventListener('click', (e) => {
             const btn = e.target.closest('[data-action]');
             if (!btn) return;
@@ -410,17 +516,38 @@ class SeatPage {
             if (action === 'switch-tab') {
                 this.currentTab = btn.dataset.tab;
                 localStorage.setItem('SeatPage_currentTab', this.currentTab);
+                
+                // 切换标签时，同步更新上方输入框内的坐标
+                const inputX = this.container.querySelector('#input-anchor-x');
+                const inputY = this.container.querySelector('#input-anchor-y');
+                if (inputX && inputY) {
+                    // 【排错修复】：这里必须是 this.anchors[this.currentTab].x
+                    inputX.value = this.anchors[this.currentTab].x;
+                    inputY.value = this.anchors[this.currentTab].y;
+                }
+                
                 this.updateUI(); this.centerOnTarget(); 
             } else if (action === 'edit-coord') {
                 e.preventDefault(); 
                 e.stopPropagation(); 
-                const nx = parseInt(prompt('修改陷阱中心 X 坐标:', this.anchor.x));
-                if (isNaN(nx)) return;
-                const ny = parseInt(prompt('修改陷阱中心 Y 坐标:', this.anchor.y));
-                if (isNaN(ny)) return;
-                this.anchor = { x: nx, y: ny };
-                this.saveData(); this.updateMap(); this.centerOnTarget();
+                const inputX = this.container.querySelector('#input-anchor-x');
+                if (inputX) inputX.focus();
             }
         }, true);
+
+        this.container.addEventListener('input', (e) => {
+            if (e.target.id === 'input-anchor-x' || e.target.id === 'input-anchor-y') {
+                const nx = parseInt(this.container.querySelector('#input-anchor-x').value);
+                const ny = parseInt(this.container.querySelector('#input-anchor-y').value);
+                
+                if (!isNaN(nx) && !isNaN(ny)) {
+                    // 【排错修复】：仅写入当前 Tab 下的 x 和 y
+                    this.anchors[this.currentTab].x = nx;
+                    this.anchors[this.currentTab].y = ny;
+                    this.saveData(); 
+                    this.updateMap(); 
+                }
+            }
+        });
     }
 }

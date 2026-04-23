@@ -41,6 +41,10 @@
     background: var(--map-bg-color); 
     position: relative; 
     cursor: default; /* 改为普通指针，因为不再允许拖拽 */
+
+    /* 新增：禁止在地图视口内选中文本 */
+    user-select: none; 
+    -webkit-user-select: none; /* 兼容部分 Webkit 内核浏览器 */
 }
 
 .seat-canvas { position: absolute; width: 3000px; height: 3000px; transform-origin: 0 0; }
@@ -68,7 +72,7 @@
 }
 
 .text-trap-center:hover {
-    transform: translate(-50%, -50%) scale(1.6); /* 鼠标滑过放大 1.6 倍 */
+    transform: translate(-50%, -50%); /* 鼠标滑过放大 1.6 倍 */
     color: var(--primary); /* 滑过变色提示可点击 */
 }
 
