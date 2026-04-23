@@ -5,17 +5,21 @@ class LevelSelectorModal {
     }
 
     render() {
+        // 核心修复：把 data-action="select-level" 和 data-action="close" 补回去了
         const html = `
             <div class="modal modal-selector" id="modal-level-selector" style="max-width: 300px;">
                 <div class="modal-header">
-                    <h2>设置座位等级</h2>
+                    <h2>选择座位等级</h2>
                     <button class="modal-close" data-action="close">&times;</button>
                 </div>
-                <div class="modal-body" style="display:flex; flex-direction:column; gap:10px;">
-                    <button class="btn" style="background:#dbeafe; color:#1e40af; font-weight:bold; padding:12px; font-size:14px;" data-action="select-level" data-level="s1">S1 级座位</button>
-                    <button class="btn" style="background:#e0e7ff; color:#3730a3; font-weight:bold; padding:12px; font-size:14px;" data-action="select-level" data-level="s2">S2 级座位</button>
-                    <button class="btn" style="background:#f3e8ff; color:#6b21a8; font-weight:bold; padding:12px; font-size:14px;" data-action="select-level" data-level="s3">S3 级座位</button>
-                    <button class="btn" style="background:#fae8ff; color:#86198f; font-weight:bold; padding:12px; font-size:14px;" data-action="select-level" data-level="s4">S4 级座位</button>
+                <div class="modal-body" style="display:flex; flex-direction:column; gap:12px;">
+                    <button class="btn" data-action="select-level" data-level="s1" style="background-color: var(--seat-s1-color); color:#fff; font-weight:bold; padding:12px; font-size:14px; border:none; border-radius:6px;">S1 级座位</button>
+                    <button class="btn" data-action="select-level" data-level="s2" style="background-color: var(--seat-s2-color); color:#fff; font-weight:bold; padding:12px; font-size:14px; border:none; border-radius:6px;">S2 级座位</button>
+                    <button class="btn" data-action="select-level" data-level="s3" style="background-color: var(--seat-s3-color); color:#fff; font-weight:bold; padding:12px; font-size:14px; border:none; border-radius:6px;">S3 级座位</button>
+                    <button class="btn" data-action="select-level" data-level="s4" style="background-color: var(--seat-s4-color); color:#fff; font-weight:bold; padding:12px; font-size:14px; border:none; border-radius:6px;">S4 级座位</button>
+                </div>
+                <div style="margin-top:20px; text-align:right;">
+                    <button class="btn-cancel" data-action="close" style="padding:8px 16px; border: 1px solid var(--gray-300); background: #fff; border-radius: 4px; cursor:pointer;">取消</button>
                 </div>
             </div>
         `;
@@ -25,7 +29,6 @@ class LevelSelectorModal {
     }
 
     bindEvents() {
-        // 单次绑定，防止事件污染
         this.container.onclick = (e) => {
             const btn = e.target.closest('[data-action]');
             if (!btn) return;

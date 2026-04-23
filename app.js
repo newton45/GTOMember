@@ -93,6 +93,94 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         }
 
+        // 假设你的 app.js 中 dataManager 是实例变量，或者可以通过某种方式访问到
+        // 以下为追加的三个全局按钮事件逻辑：
+
+        const btnSavePreset = document.getElementById('btn-save-preset');
+        if (btnSavePreset) {
+            btnSavePreset.addEventListener('click', () => {
+                // 调用之前在 core/importExport.js 中写好的全量快照方法
+                const snapshot = ImportExport.collectFullSnapshot(dataManager); 
+                localStorage.setItem('GTO_Global_Preset', JSON.stringify(snapshot));
+                alert('系统预设已存入浏览器实体缓存！下次点击“载入预设”即可一键恢复。');
+            });
+        }
+
+        const btnLoadPreset = document.getElementById('btn-load-preset');
+        if (btnLoadPreset) {
+            btnLoadPreset.addEventListener('click', () => {
+                const preset = localStorage.getItem('GTO_Global_Preset');
+                if (preset && confirm('确认载入预设？这将覆盖当前所有成员、活动和地图设置。')) {
+                    ImportExport.applyFullSnapshot(JSON.parse(preset), dataManager);
+                    window.location.reload(); // 强制刷新页面，让所有组件重新读取最新数据
+                } else if (!preset) {
+                    alert('未检测到预设文件。');
+                }
+            });
+        }
+
+        const btnClearAll = document.getElementById('btn-clear-all');
+        if (btnClearAll) {
+            btnClearAll.addEventListener('click', () => {
+                if (confirm('⚠️ 警告：这将清空【所有页面】的所有设置，包括成员、活动历史和地图布局。此操作不可逆！')) {
+                    localStorage.clear();
+                    window.location.reload();
+                }
+            });
+        }
+        
+        /* app.js 中的事件绑定部分 */
+
+        // 1. 存为预设（下载文件）
+        document.getElementById('btn-save-preset').addEventListener('click', () => {
+            ImportExport.savePresetToFile(dataManager);
+        });
+
+        // 2. 载入预设（选择本地文件）
+        document.getElementById('btn-load-preset').addEventListener('click', () => {
+            // 动态创建一个隐藏的文件选择器
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const snapshot = JSON.parse(event.target.result);
+                        if (confirm('确认从文件载入预设？当前所有页面数据将被覆盖。')) {
+                            const success = ImportExport.applyFullSnapshot(snapshot, dataManager);
+                            if (success) window.location.reload(); // 刷新以重绘所有组件
+                        }
+                    } catch (err) {
+                        alert('预设文件读取失败，请检查文件格式。');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            input.click(); // 触发文件选择
+        });
+
+        // app.js 中全部清空按钮的逻辑
+        document.getElementById('btn-clear-all').addEventListener('click', () => {
+            if (confirm('⚠️ 警告：这将彻底抹除所有成员、活动历史和地图布局！\n操作不可逆，建议先点击“存为预设”导出备份。')) {
+                // 清除所有浏览器存储
+                localStorage.clear();
+                
+                // 如果有特定的 DataManager 状态也需要重置
+                dataManager.members.data = [];
+                dataManager.activities.data = [];
+                
+                // 强制重载页面回到初始状态
+                window.location.reload();
+            }
+        });
+
+
         // 5. 导航栏红叉清空逻辑 (快照隔离修复版)
         document.querySelectorAll('.nav-clear-btn').forEach(btn => {
             btn.onclick = (e) => {

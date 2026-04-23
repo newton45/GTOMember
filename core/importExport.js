@@ -1,82 +1,64 @@
-/**
- * 成员管理系统 - 导入导出核心逻辑
- */
+/* core/importExport.js */
 const ImportExport = {
-    // 定义标准的数据结构（抬头规范）
-    SCHEMA: {
-        REQUIRED: ['id', 'nickname', 'rank'],
-        OPTIONAL: ['pastNicknames', 'leftAlliance', 'powerRank']
+    // 1. 全量收集：确保涵盖所有页面的物理键名
+    collectFullSnapshot: function(dataManager) {
+        return {
+            version: "2.5",
+            // 成员与活动 (对应各页面读取的根数据)
+            members: dataManager.members.getAll(),
+            activities: dataManager.activities.getAll(),
+            // 地图布局与坐标
+            seatData: JSON.parse(localStorage.getItem('SeatPage_seatData')) || {},
+            anchors: JSON.parse(localStorage.getItem('SeatPage_anchors')) || {},
+            currentTab: localStorage.getItem('SeatPage_currentTab') || 'bear1',
+            timestamp: Date.now()
+        };
     },
 
-    // 导出逻辑：确保所有关联数据被序列化
-    exportJSON: function(dataManager) {
-        const members = dataManager.members.getAll();
-        const dataStr = JSON.stringify(members, null, 2);
-        const blob = new Blob([dataStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        
+    // 2. 存为预设文件
+    savePresetToFile: function(dataManager) {
+        const snapshot = this.collectFullSnapshot(dataManager);
+        const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `GTO_Members_${new Date().toISOString().split('T')[0]}.json`;
-        document.body.appendChild(a); // 兼容某些浏览器的安全机制
+        a.href = URL.createObjectURL(blob);
+        a.download = `GTO全量预设_${new Date().toISOString().slice(0,10)}.json`;
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        URL.revokeObjectURL(a.href);
     },
 
-    // 导入逻辑：包含抬头校验、空项过滤、差异报告
-    importJSON: async function(file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    const rawData = JSON.parse(e.target.result);
-                    if (!Array.isArray(rawData)) throw new Error("无效的格式：预期为数组");
+    // 3. 【核心修复】全量载入：必须同步重写物理存储
+    applyFullSnapshot: function(snapshot, dataManager) {
+        if (!snapshot || !snapshot.members) {
+            alert("预设文件格式不正确，载入中止。");
+            return false;
+        }
 
-                    const report = {
-                        success: true,
-                        importedCount: 0,
-                        skippedCount: 0,
-                        missingHeaders: [],
-                        extraHeaders: [],
-                        data: []
-                    };
+        try {
+            // 1. 内存级注入：获取内部数组的物理引用，原地清空并推入新数据
+            // 这样完美绕过了对 data 变量名和 LocalStorage 键名的猜测
+            const memArr = dataManager.members.getAll();
+            memArr.length = 0; 
+            snapshot.members.forEach(m => memArr.push(m));
 
-                    // 1. 抬头校验 (取第一个有效项进行检查)
-                    if (rawData.length > 0) {
-                        const firstItemKeys = Object.keys(rawData[0]);
-                        const allExpected = [...this.SCHEMA.REQUIRED, ...this.SCHEMA.OPTIONAL];
-                        
-                        report.missingHeaders = this.SCHEMA.REQUIRED.filter(k => !firstItemKeys.includes(k));
-                        report.extraHeaders = firstItemKeys.filter(k => !allExpected.includes(k));
-                    }
+            const actArr = dataManager.activities.getAll();
+            actArr.length = 0;
+            if (snapshot.activities) {
+                snapshot.activities.forEach(a => actArr.push(a));
+            }
 
-                    // 2. 数据清洗与过滤
-                    report.data = rawData.filter(item => {
-                        // 自动忽略空白项：必须有 ID 和 昵称
-                        const isValid = item.id && item.nickname && item.id.toString().trim() !== "";
-                        if (isValid) {
-                            report.importedCount++;
-                            return true;
-                        } else {
-                            report.skippedCount++;
-                            return false;
-                        }
-                    }).map(item => {
-                        // 过滤掉多余项，只保留 Schema 定义的字段
-                        const cleanItem = {};
-                        [...this.SCHEMA.REQUIRED, ...this.SCHEMA.OPTIONAL].forEach(key => {
-                            cleanItem[key] = item[key] !== undefined ? item[key] : null;
-                        });
-                        return cleanItem;
-                    });
+            // 2. 强制重写地图相关的 LocalStorage (这里的 Key 是我们确定的)
+            localStorage.setItem('SeatPage_seatData', JSON.stringify(snapshot.seatData || {}));
+            localStorage.setItem('SeatPage_anchors', JSON.stringify(snapshot.anchors || {}));
+            localStorage.setItem('SeatPage_currentTab', snapshot.currentTab || 'bear1');
 
-                    resolve(report);
-                } catch (err) {
-                    reject(`解析失败: ${err.message}`);
-                }
-            };
-            reader.readAsText(file);
-        });
+            // 3. 唤醒 DataManager，让它用自己正确的 Key 将内存数组写入硬盘
+            dataManager.save();
+
+            return true;
+        } catch (e) {
+            console.error("预设载入失败:", e);
+            alert("载入过程中发生错误，请检查控制台输出。");
+            return false;
+        }
     }
 };

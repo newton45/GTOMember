@@ -5,13 +5,20 @@ class SeatSelectorModal {
     }
 
     render(unseatedMembers, seatedMembers) {
-        // 按照战力排序（从小到大，没有战力的排在最后）
-        const sortFn = (a, b) => (a.powerRank || 999) - (b.powerRank || 999);
+        // 【核心修复】：优先按活跃度降序（0活跃>1半活跃>2不活跃），再按战力排列
+        const sortFn = (a, b) => {
+            const statusA = a.activityStatus || 0;
+            const statusB = b.activityStatus || 0;
+            if (statusA !== statusB) return statusA - statusB;
+            return (a.powerRank || 999) - (b.powerRank || 999);
+        };
+        
         unseatedMembers.sort(sortFn);
         seatedMembers.sort(sortFn);
 
+        // 【核心修复】：在 className 中补充了 status-${m.activityStatus || 0}
         const renderCards = (members) => members.map(m => `
-            <div class="member-entity rank-${m.rank} selector-card" data-id="${m.id}" style="width:var(--cell-size); height:var(--cell-size); position:relative; cursor:pointer; flex-shrink:0; margin:0;" title="${m.nickname}">
+            <div class="member-entity rank-${m.rank} status-${m.activityStatus || 0} selector-card" data-id="${m.id}" style="width:var(--cell-size); height:var(--cell-size); position:relative; cursor:pointer; flex-shrink:0; margin:0;" title="${m.nickname}">
                 <div class="entity-name" style="font-size:10px; font-weight:bold; display:flex; align-items:center; justify-content:center; height:100%;">${m.nickname}</div>
                 <div class="entity-info-index" style="position:absolute; bottom:2px; left:2px; font-size:8px; opacity:0.5;">${m.powerRank || ''}</div>
                 <div class="entity-rank" style="position:absolute; bottom:2px; right:2px; font-size:8px; font-weight:bold;">${m.rank}</div>
@@ -26,7 +33,7 @@ class SeatSelectorModal {
                 </div>
                 <div class="modal-body">
                     <p style="font-size:13px; color:var(--gray-700); margin-bottom:15px;">
-                        请选择一位在盟成员入座。
+                        请选择一位在盟成员入座。（<span style="color:var(--warning); font-weight:bold;">橙框</span>半活跃，<span style="color:var(--danger); font-weight:bold;">红框</span>不活跃）
                     </p>
                     
                     <h4 style="margin-bottom: 8px; border-left: 3px solid var(--primary); padding-left: 8px;">未落座成员</h4>

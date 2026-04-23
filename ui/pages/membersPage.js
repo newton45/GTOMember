@@ -324,20 +324,57 @@ class MembersPage {
         };
     }
 
+    // 修改 ui/pages/membersPage.js 中的 handleSave 方法
     handleSave(data, existing) {
-    if (existing) {
-        // 如果 ID 被修改了
-        if (existing.id !== data.id) {
-            this.dataManager.members.remove(existing.id); // 移除旧 ID
+        // 查找是否存在相同 ID 的成员（排除正在编辑的自己）
+        const duplicateMember = this.dataManager.members.findById(data.id);
+        const oldOne = this.dataManager.members.findById(data.id);
+        if (oldOne && !existing) {
+            // ID 碰撞：执行合并
+            if (oldOne.nickname !== data.nickname) {
+                oldOne.pastNicknames = oldOne.pastNicknames || [];
+                oldOne.pastNicknames.push(oldOne.nickname); // 旧名存入曾用名
+                oldOne.nickname = data.nickname; // 更新现用名
+            }
+            oldOne.leftAlliance = false; // 强制设为在盟
+            oldOne.powerRank = data.powerRank; // 移动到当前点击的网格位
+            
+            this.dataManager.members.update(oldOne.id, oldOne);
         }
-        this.dataManager.members.update(data.id, data); // 写入新 ID 数据
-    } else {
-        const member = new Member(data);
-        this.dataManager.members.add(member);
+        if (duplicateMember && !existing) {
+            // 【核心合并逻辑】：ID 碰撞
+            // 1. 处理昵称：若昵称不同，则老昵称变曾用名
+            if (duplicateMember.nickname !== data.nickname) {
+                duplicateMember.pastNicknames = duplicateMember.pastNicknames || [];
+                duplicateMember.pastNicknames.push(duplicateMember.nickname);
+                duplicateMember.nickname = data.nickname;
+            }
+
+            // 2. 强制设为在本盟，并更新职级
+            duplicateMember.leftAlliance = false;
+            duplicateMember.rank = data.rank;
+
+            // 3. 位置移动：将其 powerRank 设置为当前点击的网格位（由 data.powerRank 携带）
+            if (data.powerRank) {
+                duplicateMember.powerRank = data.powerRank;
+            }
+
+            this.dataManager.members.update(duplicateMember.id, duplicateMember);
+            alert(`ID 重复检测：已将成员 ${data.nickname} 从原排位移动至当前网格，曾用名已记录。`);
+            
+        } else if (existing) {
+            // 正常的编辑保存
+            this.dataManager.members.update(data.id, data);
+        } else {
+            // 纯粹的新增
+            const member = new Member(data);
+            this.dataManager.members.add(member);
+        }
+
+        this.dataManager.save();
+        this.packActiveMembers(); // 重新整理连续排位
+        this.render();
     }
-    this.dataManager.save();
-    this.render(document.getElementById('search-member')?.value);
-}
 
     // FLIP 动画管线
     applyStateWithAnimation(logicFn) {
