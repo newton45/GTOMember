@@ -34,6 +34,13 @@
 .btn-red { background: var(--danger); }
 .grid-btn:hover { filter: brightness(1.15); }
 .grid-btn:active { filter: brightness(0.8); transform: scale(0.9); }
+/* 追加黑色按钮样式用于彻底删除 */
+.grid-btn.btn-black {
+    background-color: #3f3f46;
+}
+.grid-btn.btn-black:hover {
+    background-color: #18181b;
+}
 
 /* 文字信息布局 */
 .entity-name { grid-row: 2; grid-column: 1 / span 3; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: inherit; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -52,3 +59,44 @@
 .tag-del { font-style: normal; font-weight: bold; opacity: 0.5; }
 .tag-input { border: none !important; background: transparent !important; font-size: 12px; flex: 1; min-width: 60px; outline: none; }
 .tags-wrapper { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* 当拖拽悬停在池子里的成员上方时，显示插入指示 */
+.pool-item.drag-over {
+    border-left: 4px solid var(--primary); /* 在左侧显示一条蓝色线，表示将插入此处 */
+    padding-left: 2px;
+    transform: translateX(4px);
+}
+
+/* ==========================================
+   连续排序模式 (State: Continuous Sorting)
+   ========================================== */
+
+/* 1. 目标锁定框：粗黑边闪烁 */
+.compact-cell.sorting-target {
+    border: 3px solid #18181b !important;
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.15);
+    animation: blinkTarget 0.8s infinite alternate;
+    position: relative;
+    z-index: 5;
+}
+@keyframes blinkTarget {
+    from { border-color: #18181b; }
+    to { border-color: #d4d4d8; }
+}
+
+/* 2. 模式激活时：所有成员卡片变为“准星”瞄准状态，增加悬停吸附感 */
+.sorting-mode .member-entity {
+    cursor: crosshair !important;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sorting-mode .member-entity:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 2px #3b82f6;
+    z-index: 10;
+}
+
+/* 3. 模式激活时：屏蔽内部功能按钮，防止点偏触发编辑/删除 */
+.sorting-mode .entity-action-grid {
+    pointer-events: none;
+    opacity: 0.3;
+}

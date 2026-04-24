@@ -37,7 +37,6 @@ class SeatPage {
             const sd = localStorage.getItem('SeatPage_seatData');
             if (sd) this.dataManager.seatData = JSON.parse(sd);
             
-            // 【核心修复】：改为读取复数形式的 SeatPage_anchors
             const sa = localStorage.getItem('SeatPage_anchors');
             if (sa) this.anchors = JSON.parse(sa);
         } catch(e) {}
@@ -46,6 +45,30 @@ class SeatPage {
             this.dataManager.seatData = { bear1: { seats: [], unseated: [] }, bear2: { seats: [], unseated: [] } };
         }
         
+        // ==========================================
+        // 【核心修复：幽灵数据 GC (垃圾回收) 机制】
+        // 强行清洗已经“退游”、“移出联盟”或被“彻底删除”的成员ID
+        // ==========================================
+        const validActiveMembers = new Set(
+            this.dataManager.members.getAll()
+                .filter(m => !m.leftAlliance)
+                .map(m => m.id)
+        );
+
+        ['bear1', 'bear2'].forEach(trap => {
+            const trapData = this.dataManager.seatData[trap];
+            // 1. 清洗座位上的幽灵：查无此人的，踢下座位
+            trapData.seats.forEach(s => {
+                if (s.memberId && !validActiveMembers.has(s.memberId)) {
+                    s.memberId = null; 
+                }
+            });
+            // 2. 清洗待选池的幽灵
+            trapData.unseated = trapData.unseated.filter(id => validActiveMembers.has(id));
+        });
+        // ==========================================
+        
+        // 获取全部有效在盟成员，查漏补缺（把新增的人丢进 bear1 待选池）
         const allMembers = this.dataManager.members.getAll().filter(m => !m.leftAlliance);
         const assignedIds = new Set();
         ['bear1', 'bear2'].forEach(trap => {
@@ -55,6 +78,8 @@ class SeatPage {
         allMembers.forEach(m => {
             if (!assignedIds.has(m.id)) this.dataManager.seatData.bear1.unseated.push(m.id);
         });
+        
+        // 保存清洗后的数据
         this.saveData(); 
     }
 

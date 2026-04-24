@@ -73,3 +73,25 @@
     from { opacity: 0; transform: scale(0.9); }
     to { opacity: 1; transform: scale(1); }
 }
+
+/* 标题组容器，确保垂直对齐 */
+.header-title-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+/* 调整原标题边距，让副标题更贴合 */
+.header-title-group h1 {
+    margin-bottom: 2px;
+}
+
+/* 副标题样式：很小很浅 */
+.app-tagline {
+    font-size: 8px;           /* 足够小的字号 */
+    color: var(--gray-400);    /* 使用变量中的浅灰色 */
+    opacity: 0.6;              /* 增加透明度，使其视觉上更“浅” */
+    font-weight: normal;
+    letter-spacing: 0.5px;     /* 微调字间距，增加抽象美感 */
+    pointer-events: none;      /* 防止误触，仅作为视觉装饰 */
+}

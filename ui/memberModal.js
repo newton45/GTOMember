@@ -12,6 +12,19 @@ class MemberModal {
         const isEdit = !!member;
         const title = isEdit ? '编辑成员' : '新建成员';
 
+        // 底部 Footer：编辑模式下左侧显示红色删除按钮，右侧显示保存/取消
+        const footerContent = isEdit 
+            ? `<button type="button" class="btn" id="btn-modal-delete" style="color: #ef4444; border-color: #fca5a5; background: #fef2f2;">删除成员</button>
+               <div>
+                   <button class="btn" data-action="cancel">取消</button>
+                   <button class="btn btn-primary" data-action="save">同步并保存</button>
+               </div>`
+            : `<div style="flex: 1;"></div>
+               <div>
+                   <button class="btn" data-action="cancel">取消</button>
+                   <button class="btn btn-primary" data-action="save">同步并保存</button>
+               </div>`;
+
         const html = `
             <div class="modal" id="modal-member">
                 <div class="modal-header">
@@ -44,9 +57,8 @@ class MemberModal {
                         </select>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn" data-action="cancel">取消</button>
-                    <button class="btn btn-primary" data-action="save">同步并保存</button>
+                <div class="modal-footer" style="justify-content: space-between; display: flex; width: 100%;">
+                    ${footerContent}
                 </div>
             </div>
         `;
@@ -86,6 +98,20 @@ class MemberModal {
                 this.renderTags();
             }
         };
+
+        // 绑定删除按钮逻辑
+        const deleteBtn = this.container.querySelector('#btn-modal-delete');
+        if (deleteBtn) {
+            deleteBtn.onclick = () => {
+                const confirmMsg = "⚠️ 警告：彻底删除后，该成员的【所有参战历史】和【曾用名记录】将永久丢失！\n\n💡 强烈建议：如果您只是想将他移出当前排位，请点击『取消』，并在主界面将他拖入【非本盟区】或【纪念区】来保留数据。\n\n您依然执意要彻底抹除他吗？";
+                if (confirm(confirmMsg)) {
+                    // 利用自定义事件触发外层的删除逻辑，实现极致解耦
+                    const deleteEvent = new CustomEvent('member-delete', { detail: { id: this.currentMember.id } });
+                    document.dispatchEvent(deleteEvent);
+                    this.close();
+                }
+            };
+        }
     }
 
     save() {
@@ -93,7 +119,6 @@ class MemberModal {
         const newId = this.container.querySelector('#field-id').value.trim();
         const rank = this.container.querySelector('#field-rank').value;
 
-        // 【解绑限制】：将验证逻辑放宽，只要存在非空字符即可，不再要求必须为 8 位数字
         if (!newId) return alert('ID不能为空');
 
         if (this.currentMember && this.currentMember.nickname !== newNickname) {
@@ -107,7 +132,9 @@ class MemberModal {
             id: newId, 
             rank,
             pastNicknames: [...new Set(this.tempPastNicknames)],
-            leftAlliance: this.currentMember?.leftAlliance || false
+            // 保留原有的区域状态
+            leftAlliance: this.currentMember?.leftAlliance || false,
+            isMemorial: this.currentMember?.isMemorial || false
         };
 
         if (this.onSave) this.onSave(memberData, this.currentMember);

@@ -16,18 +16,22 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="app">
-        <header class="app-header">
+    <header class="app-header">
+        <div class="header-title-group">
             <h1>GTO管理系统</h1>
-            <div class="data-controls">
-                <button id="btn-save-preset" class="btn" style="background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0;">存为预设</button>
-                <button id="btn-load-preset" class="btn" style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe;">载入预设</button>
-                <button id="btn-clear-all" class="btn" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;">全部清空</button>
+            <div class="app-tagline">------------------ Kingshot 494[GTO] 猛凶人星外</div>
+        </div>
+        <div class="data-controls">
+                <button id="btn-cloud-upload" class="btn" style="background: #8c8c8c; color: #ffffff; border: 1px solid #ffffff;">↑↑↑ 上传设置</button>
+                <button id="btn-cloud-download" class="btn" style="background: #8c8c8c; color: #ffffff; border: 1px solid #ffffff;">↓↓↓ 下载设置</button>
+                <button id="btn-clear-all" class="btn btn-primary">全部清空</button>
                 
-                <button id="btn-export" class="btn btn-primary">导出JSON</button>
-                <button id="btn-import" class="btn btn-primary">导入JSON</button>
+                <button id="btn-export" class="btn btn-primary">导出本地</button>
+                <button id="btn-import" class="btn btn-primary">导入本地</button>
+                
                 <input type="file" id="file-import" accept=".json" hidden>
             </div>
+            
         </header>
 
         <nav class="app-nav">
@@ -52,7 +56,7 @@
                         <button id="btn-batch-add-tiny" class="btn btn-primary" title="批量新增成员 (昵称+ID)">+++</button>
                     </div>
                     <div class="search-box">
-                        <input type="text" id="search-member" placeholder="搜索成员... ( 局部昵称 / ID / 曾用名 / 职级.如R5 等 )" style="min-width: 380px;">
+                        <input type="text" id="search-member" placeholder="搜索成员... ( 拼音首字母 / 局部昵称 / ID / 曾用名 / 职级 )" style="min-width: 380px;">
                     </div>
                     </div>
                 <div class="members-grid" id="members-grid"></div>
@@ -74,33 +78,33 @@
     <script src="config/constants.js"></script>
     <script src="core/storage.js"></script>
     <script src="core/importExport.js"></script>
+    <script src="core/cloudSync.js"></script>
+
     <script src="data/member.js"></script>
     <script src="data/activity.js"></script>
     <script src="data/memberManager.js"></script>
     <script src="data/activityManager.js"></script> 
     <script src="data/dataManager.js"></script>
+
     <script src="ui/memberModal.js"></script>
     <script src="ui/batchAddModal.js"></script>
     <script src="ui/rankAdjustModal.js"></script>
     <script src="ui/powerAdjustModal.js"></script>
-    <script src="ui/memberRenderer.js"></script>
-    <script src="ui/pages/membersPage.js"></script>
     <script src="ui/components/createActivityModal.js"></script> 
     <script src="ui/components/memberSelectorModal.js"></script>
     <script src="ui/components/memberMarkerModal.js"></script>
     <script src="ui/components/renameActivityModal.js"></script>
     <script src="ui/components/teamAllocationModal.js"></script>
-    <script src="ui/pages/activitiesPage.js"></script>
-
-    <script src="ui/pages/activitiesPage.js"></script>
-    <script src="ui/components/memberSelectorModal.js"></script>
-    <script src="ui/components/teamAllocationModal.js"></script>
     <script src="ui/components/clearHistoryModal.js"></script>
     <script src="ui/components/battleResultModal.js"></script>
-
-    <script src="ui/pages/seatPage.js"></script>
     <script src="ui/components/seatSelectorModal.js"></script>
     <script src="ui/components/levelSelectorModal.js"></script> 
+    <script src="ui/components/syncModal.js"></script>
+
+    <script src="ui/memberRenderer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pinyin-match/dist/main.js"></script>
+    <script src="ui/pages/membersPage.js"></script>
+    <script src="ui/pages/activitiesPage.js"></script>
     <script src="ui/pages/seatPage.js"></script>
 
     <script src="app.js"></script>
