@@ -226,21 +226,29 @@ class MembersPage {
         const memorialPool = document.getElementById('memorial-pool');
         
         const activeMembers = this.packActiveMembers();
-        // 【修改点】：调用规整后的排序函数
         const outMembers = this.packPoolMembers(false);
         const memorialMembers = this.packPoolMembers(true);
         
         const q = searchQuery.toLowerCase().trim();
-        const checkMatch = (m) => { /* ...保持之前的拼音匹配逻辑... */ };
 
-        // 渲染主网格
+        // 【已修复】：还原拼音与多维度搜索算法
+        const checkMatch = (m) => {
+            if (!q) return false;
+            const basicMatch = m.nickname.toLowerCase().includes(q) || 
+                               m.id.toLowerCase().includes(q) || 
+                               m.rank.toLowerCase().includes(q);
+            let pinyinMatch = false;
+            if (typeof PinyinMatch !== 'undefined') {
+                pinyinMatch = PinyinMatch.match(m.nickname, q) || 
+                              (m.pastNicknames && m.pastNicknames.some(pn => PinyinMatch.match(pn, q)));
+            }
+            return basicMatch || pinyinMatch;
+        };
+
         grid.innerHTML = Array.from({ length: 100 }, (_, i) => {
             const member = activeMembers[i];
             const isMatch = member ? checkMatch(member) : false;
-            
-            // 【修改点】：判断当前格子是否是连续排序的“标靶”
             const isTarget = this.isContinuousSorting && (i + 1) === this.currentSortTarget;
-            
             return `
                 <div class="compact-cell ${member ? 'occupied' : 'empty'} ${isTarget ? 'sorting-target' : ''}" data-power="${i + 1}">
                     ${member ? this.renderMemberContent(member, 'active', isMatch) : ''}
@@ -248,19 +256,12 @@ class MembersPage {
             `;
         }).join('');
 
-        // 2. 渲染非本盟区（样式与纪念区对齐：半透明 + 灰度）
         const poolStyle = 'opacity: 0.75; filter: grayscale(40%);';
-        
         pool.innerHTML = outMembers.map(m => `
-            <div class="pool-item" style="${poolStyle}" data-id="${m.id}">
-                ${this.renderMemberContent(m, 'out', checkMatch(m))}
-            </div>
+            <div class="pool-item" style="${poolStyle}" data-id="${m.id}">${this.renderMemberContent(m, 'out', checkMatch(m))}</div>
         `).join('');
-
         memorialPool.innerHTML = memorialMembers.map(m => `
-            <div class="pool-item" style="${poolStyle}" data-id="${m.id}">
-                ${this.renderMemberContent(m, 'memorial', checkMatch(m))}
-            </div>
+            <div class="pool-item" style="${poolStyle}" data-id="${m.id}">${this.renderMemberContent(m, 'memorial', checkMatch(m))}</div>
         `).join('');
     }
 
@@ -307,36 +308,32 @@ class MembersPage {
             // 【核心拦截】：连续排序模式的最高级拦截
             // ==================================================
             if (this.isContinuousSorting) {
-                e.stopPropagation(); // 阻止后续的所有常规操作
+                e.stopPropagation();
                 const entity = e.target.closest('.member-entity');
                 
-                // 只有点到活生生的成员，才执行位移
                 if (entity && !this.isAnimating) {
                     const id = entity.dataset.id;
                     const isFromPool = entity.dataset.pool !== 'active';
-                    
-                    // 记录当前目标点
                     const targetCellPower = this.currentSortTarget;
                     
-                    // 游标自动推进到下一位
-                    this.currentSortTarget++;
-                    // 【持久化修复 3：实时覆写游标进度】
-                    localStorage.setItem('MembersPage_currentSortTarget', this.currentSortTarget.toString());
-                    
-                    if (this.currentSortTarget > 100) {
-                        setTimeout(() => alert('🏁 已达到 100 号位上限，连续排序自动结束。'), 400);
-                        this.isContinuousSorting = false;
-                        this.currentSortTarget = null;
-                        // 【持久化修复 3：满 100 退出时清理缓存】
-                        localStorage.removeItem('MembersPage_isContinuousSorting');
-                        localStorage.removeItem('MembersPage_currentSortTarget');
-                        this.updateSortButtonUI();
-                    }
-                    
-                    // 借用现成的底层网格拖放算法进行瞬间转移与挤占！
+                    // 1. 先触发成员移动动画 (350ms)
                     this.handleGridDrop(id, targetCellPower, isFromPool);
+                    
+                    // 2. 延迟执行：等待成员“落地”后再移动黑框
+                    setTimeout(() => {
+                        if (!this.isContinuousSorting) return;
+                        this.currentSortTarget++;
+                        localStorage.setItem('MembersPage_currentSortTarget', this.currentSortTarget.toString());
+                        
+                        if (this.currentSortTarget > 100) {
+                            alert('🏁 连续排序自动结束。');
+                            this.toggleSortMode();
+                        }
+                        // 重新渲染，带上当前的搜索词，确保搜索高亮和黑框位置同步
+                        this.render(document.getElementById('search-member')?.value);
+                    }, 400); // 略长于 350ms 的位移动画，确保视觉稳定
                 }
-                return; // 直接退出，屏蔽点空白处新增等行为
+                return;
             }
             // ==================================================
             

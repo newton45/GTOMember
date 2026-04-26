@@ -1,10 +1,13 @@
 class ActivityGroup {
     constructor(data = {}) {
-        this.id = data.id || 'group_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-        this.name = data.name || '新建活动组';
+        this.name = data.name || '新小组';
         this.description = data.description || '无';
+        this.memberIds = data.memberIds || [];
         this.leaderId = data.leaderId || null;
-        this.memberIds = data.memberIds || []; // 存放成员ID
+        
+        // 【核心修复】：为替补名单增加反序列化/水合通道
+        // 这样从 LocalStorage 或外部 JSON 导入时，替补数据就不会再被系统丢弃了
+        this.substituteIds = data.substituteIds || [];
     }
 }
 

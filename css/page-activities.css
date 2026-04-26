@@ -87,3 +87,24 @@
 .selector-option-item:hover { background-color: var(--gray-50); }
 .selector-option-item input[type="checkbox"]:checked + label { font-weight: bold; color: var(--primary); }
 .selector-grid { display: flex; flex-wrap: wrap; gap: var(--grid-gap); padding: 10px; background: var(--gray-200); border-radius: 8px; max-height: 400px; overflow-y: auto; }
+
+/* 替补状态徽章 */
+.substitute-badge {
+    position: absolute;
+    top: -10px;
+    right: -10px; /* 放在右上角，避开组长的左上角 */
+    background: #a855f7; /* 骚紫色，高对比度 */
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 10;
+    pointer-events: none;
+}
+
+/* 如果你想让替补成员的边框也变色，可以加上这个 */
+.substitute-style {
+    border-color: #a855f7 !important;
+}

@@ -146,55 +146,68 @@ class SeatPage {
     }
 
     renderSkeleton() {
-        const bearName = this.currentTab === 'bear1' ? '熊 1' : '熊 2';
-        this.container.innerHTML = `
-            <style>
-                .seat-tools-panel { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
-                .btn-seat-tool { padding: 8px 12px; border: 1px solid var(--gray-300); background: #fff; border-radius: 4px; cursor: pointer; font-size: 13px; color: var(--gray-700); font-weight: bold; transition: all 0.2s; text-align: center;}
-                .btn-seat-tool:hover { background: var(--gray-100); }
-                .btn-seat-tool.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-            </style>
-            <div class="activities-layout-vertical page-seats">
-                <div class="activity-topbar" style="flex-direction: column; align-items: flex-start; gap: 15px; height: auto;">
-                    <div class="topbar-left" style="display: flex; align-items: center; gap: 30px; width: 100%; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span class="topbar-label">当前地图：</span>
-                            <div class="team-tabs" id="seat-map-tabs">
-                                <button class="btn-tab" data-action="switch-tab" data-tab="bear1">熊 1</button>
-                                <button class="btn-tab" data-action="switch-tab" data-tab="bear2">熊 2</button>
-                            </div>
-                        </div>
-                        <div class="trap-coord-inputs" style="display: flex; align-items: center; gap: 10px; font-weight: bold; color: var(--gray-700);">
-                            <span>当前陷阱位置：</span>
-                            <span>x=<input type="number" id="input-anchor-x" value="${this.anchors[this.currentTab].x}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
-                            <span>y=<input type="number" id="input-anchor-y" value="${this.anchors[this.currentTab].y}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
+    const bearName = this.currentTab === 'bear1' ? '熊 1' : '熊 2';
+    this.container.innerHTML = `
+        <style>
+            /* 核心布局修复：改为横向排列并优化间距 */
+            .seat-tools-row { 
+                display: flex; 
+                flex-direction: row; 
+                gap: 10px; 
+                padding: 15px;
+                background: var(--gray-50);
+                border-bottom: 1px solid var(--gray-200);
+            }
+            .btn-seat-tool { 
+                padding: 8px 16px; 
+                border: 1px solid var(--gray-300); 
+                background: #fff; 
+                border-radius: 4px; 
+                cursor: pointer; 
+                font-size: 13px; 
+                color: var(--gray-700); 
+                font-weight: bold; 
+                transition: all 0.2s; 
+                white-space: nowrap;
+            }
+            .btn-seat-tool:hover { background: var(--gray-100); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+            .btn-seat-tool.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        </style>
+        
+        <div class="activities-layout-vertical page-seats">
+            <div class="activity-topbar" style="flex-direction: column; align-items: flex-start; gap: 0; height: auto; padding: 0;">
+                <div class="topbar-left" style="display: flex; align-items: center; gap: 30px; width: 100%; flex-wrap: wrap; padding: 15px 20px; border-bottom: 1px solid var(--gray-200);">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="topbar-label">当前地图：</span>
+                        <div class="team-tabs" id="seat-map-tabs">
+                            <button class="btn-tab" data-action="switch-tab" data-tab="bear1">熊 1</button>
+                            <button class="btn-tab" data-action="switch-tab" data-tab="bear2">熊 2</button>
                         </div>
                     </div>
-                    
-                    <div style="display: flex; gap: 15px; width: 100%; align-items: stretch;">
-                        <div class="seat-tools-panel">
-                            <button class="btn-seat-tool" data-action="tool-member">成员标记</button>
-                            <button class="btn-seat-tool" data-action="tool-auto">自动落座</button>
-                            <button class="btn-seat-tool" id="btn-tool-obstacle" data-action="tool-obstacle">障碍标记</button>
-                            <button class="btn-seat-tool" id="btn-tool-save" data-action="tool-save">保存${bearName}</button>
-                            <button class="btn-seat-tool" id="btn-tool-load" data-action="tool-load">读取${bearName}</button>
-                        </div>
-                        <div class="seat-instructions" style="font-size: 13px; color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 10px 15px; border-radius: 6px; flex-grow: 1; line-height: 1.6;">
-                            <b>说明：</b><br>
-                            点击空白位置可新建空座位。拖动座位可改变其位置。<br>
-                            点击中间位置可替换成员。拖动座位至熊陷阱处可删除该座位。<br>
-                            使用左侧<b>障碍标记</b>可在空地框选生成/取消障碍物。
-                        </div>
+                    <div class="trap-coord-inputs" style="display: flex; align-items: center; gap: 10px; font-weight: bold; color: var(--gray-700);">
+                        <span>当前陷阱位置：</span>
+                        <span>x=<input type="number" id="input-anchor-x" value="${this.anchors[this.currentTab].x}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
+                        <span>y=<input type="number" id="input-anchor-y" value="${this.anchors[this.currentTab].y}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
                     </div>
                 </div>
-                <div class="seat-map-wrapper">
-                    <main class="seat-viewport" id="seat-viewport">
-                        <div class="seat-canvas" id="seat-canvas"></div>
-                    </main>
+                
+                <div class="seat-tools-row" style="width: 100%;">
+                    <button class="btn-seat-tool" data-action="tool-member">成员标记</button>
+                    <button class="btn-seat-tool" data-action="tool-auto">自动落座</button>
+                    <button class="btn-seat-tool" id="btn-tool-obstacle" data-action="tool-obstacle">障碍标记</button>
+                    <button class="btn-seat-tool" id="btn-tool-save" data-action="tool-save">保存 ${bearName}</button>
+                    <button class="btn-seat-tool" id="btn-tool-load" data-action="tool-load">读取 ${bearName}</button>
                 </div>
             </div>
-        `;
-    }
+
+            <div class="seat-map-wrapper" style="flex: 1; position: relative; overflow: hidden;">
+                <main class="seat-viewport" id="seat-viewport">
+                    <div class="seat-canvas" id="seat-canvas"></div>
+                </main>
+            </div>
+        </div>
+    `;
+}
 
     updateUI() {
         const tabs = this.container.querySelectorAll('#seat-map-tabs .btn-tab');
@@ -590,7 +603,6 @@ class SeatPage {
                             draggedEntity.style.opacity = '0';
                         }
                         needsImmediateUpdate = false;
-                        
                         // 【核心修复】：使用捕获到的 targetId
                         setTimeout(() => {
                             const seat = trapData.seats.find(s => s.id === targetId);
@@ -598,12 +610,12 @@ class SeatPage {
                             trapData.seats = trapData.seats.filter(s => s.id !== targetId);
                             this.saveData();
                             this.updateMap();
-                        }, 250); 
-                        
+                        }, 250);
                     } else if (coll.seatHits.length === 0 && !coll.obstacleHit) {
                         const seat = trapData.seats.find(s => s.id === targetId);
                         if (seat && (seat.x !== grid.x || seat.y !== grid.y)) {
-                            seat.x = grid.x; seat.y = grid.y; 
+                            seat.x = grid.x;
+                            seat.y = grid.y; 
                             this.saveData(); 
                         }
                     } else {
@@ -614,7 +626,61 @@ class SeatPage {
                     treatedAsClick = true;
                 }
 
-                if (treatedAsClick) this.openSelectorModal({ type: 'replace', seatId: targetId });
+                // ==========================================
+                // 【核心注入】：落座与离座的数据闭环逻辑
+                // ==========================================
+                if (treatedAsClick) {
+                    const trapData = this.dataManager.seatData[this.currentTab];
+                    const seatObj = trapData.seats.find(s => s.id === targetId);
+                    
+                    if (seatObj) {
+                        if (!seatObj.memberId) {
+                            // 情况 A：空座位
+                            
+                            // 【核心修复：幽灵数据终极清洗】
+                            // 1. 获取当前地图所有“已落座”的合法成员 ID
+                            const seatedIds = new Set(trapData.seats.map(s => s.memberId).filter(Boolean));
+                            // 2. 将待选池彻底去重，并过滤掉任何已经落座的人
+                            trapData.unseated = Array.from(new Set(trapData.unseated || []))
+                                .filter(id => !seatedIds.has(id));
+                            // 3. 顺手保存，把硬盘里的脏数据也洗干净
+                            this.dataManager.save(); 
+
+                            // 4. 过滤有效人员并调起选择框
+                            const availableMembers = trapData.unseated
+                                .map(id => this.dataManager.members.findById(id))
+                                .filter(Boolean)
+                                .sort((a, b) => (a.powerRank || 999) - (b.powerRank || 999));
+
+                            this.selectorModal.onConfirm = (selectedIds) => {
+                                if (selectedIds.length === 0) return;
+                                const targetMemberId = selectedIds[0];
+
+                                // 1. 占座
+                                seatObj.memberId = targetMemberId;
+                                // 2. 待选池踢出
+                                trapData.unseated = trapData.unseated.filter(id => id !== targetMemberId);
+                                
+                                this.saveData();
+                                this.updateMap();
+                            };
+
+                            this.selectorModal.render(availableMembers);
+                        } else {
+                            // 情况 B：如果座位上有人，点击时直接触发离座确认
+                            if (confirm('是否让该成员离座并返回待选池？')) {
+                                // 将他送回本团的待选池
+                                if (!trapData.unseated.includes(seatObj.memberId)) {
+                                    trapData.unseated.push(seatObj.memberId);
+                                }
+                                seatObj.memberId = null; // 清空座位
+                                
+                                this.saveData();
+                                this.updateMap();
+                            }
+                        }
+                    }
+                }
                 
                 this.dragState.seatId = null;
                 this.dragState.hasMoved = false;

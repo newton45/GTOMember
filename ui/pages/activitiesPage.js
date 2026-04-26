@@ -1,6 +1,6 @@
+/* ui/pages/activitiesPage.js */
 class ActivitiesPage {
     constructor(dataManager, modalContainer) {
-        
         this.dataManager = dataManager;
         this.container = document.getElementById('page-activities');
         this.modalContainer = modalContainer;
@@ -12,7 +12,6 @@ class ActivitiesPage {
         this.clearHistoryModal = new ClearHistoryModal(modalContainer);
         this.battleModal = new BattleResultModal(modalContainer);
         
-
         this.currentActivityId = null;
         this.currentTeamTab = 1;
         this.isAnimating = false;
@@ -25,20 +24,35 @@ class ActivitiesPage {
         this.initDragAndDrop();
     }
 
+    // 幽灵数据 GC 与排他性分配
     syncActiveMembers(act) {
         if (!act) return;
-        const allActive = this.dataManager.members.getAll().filter(m => !m.leftAlliance);
         
-        const assignedIds = new Set();
-        const findAndAdd = (team) => {
-            team.unassignedIds.forEach(id => assignedIds.add(id));
-            team.groups.forEach(g => g.memberIds.forEach(id => assignedIds.add(id)));
-        };
-        findAndAdd(act.team1); findAndAdd(act.team2);
+        const allActive = this.dataManager.members.getAll().filter(m => !m.leftAlliance);
+        const validActiveIds = new Set(allActive.map(m => m.id));
+        const assignedToGroup = new Set();
+
+        [act.team1, act.team2].forEach(team => {
+            team.groups.forEach(g => {
+                g.memberIds = g.memberIds.filter(id => validActiveIds.has(id));
+                g.substituteIds = (g.substituteIds || []).filter(id => validActiveIds.has(id));
+                g.memberIds.forEach(id => assignedToGroup.add(id));
+                if (g.leaderId && !validActiveIds.has(g.leaderId)) g.leaderId = null;
+            });
+        });
+
+        [act.team1, act.team2].forEach(team => {
+            const cleanPool = team.unassignedIds.filter(id => validActiveIds.has(id) && !assignedToGroup.has(id));
+            team.unassignedIds = Array.from(new Set(cleanPool));
+        });
+
+        const allAssignedOrPooled = new Set(assignedToGroup);
+        act.team1.unassignedIds.forEach(id => allAssignedOrPooled.add(id));
+        act.team2.unassignedIds.forEach(id => allAssignedOrPooled.add(id));
 
         allActive.forEach(m => {
-            if (!assignedIds.has(m.id)) {
-                const lastRecord = m.activityHistory[m.activityHistory.length - 1];
+            if (!allAssignedOrPooled.has(m.id)) {
+                const lastRecord = m.activityHistory && m.activityHistory[m.activityHistory.length - 1];
                 if (lastRecord && lastRecord.team === 2) {
                     act.team2.unassignedIds.push(m.id);
                 } else {
@@ -48,7 +62,6 @@ class ActivitiesPage {
         });
     }
 
-    // --- 滚动位置记忆与无闪烁渲染 ---
     saveAndRefresh() {
         const canvas = this.container.querySelector('.activity-canvas');
         const scrollTop = canvas ? canvas.scrollTop : 0;
@@ -60,8 +73,7 @@ class ActivitiesPage {
         if (newCanvas) newCanvas.scrollTop = scrollTop;
     }
 
-    // --- 核心：FLIP 动画引擎 (平滑阵列移动) ---
-    // --- 完善后的 FLIP 动画管线 ---
+    // 核心：FLIP 动画引擎
     applyStateWithAnimation(logicFn, dragData = null) {
         if (this.isAnimating) return;
         this.isAnimating = true;
@@ -73,7 +85,6 @@ class ActivitiesPage {
         const firstPositions = new Map();
         
         entities.forEach(el => {
-            // 【核心修复】：如果当前元素是刚刚松手的那个，强行用鼠标计算出的真实悬浮坐标替代老 DOM 坐标
             if (dragData && dragData.draggedId === el.dataset.id) {
                 firstPositions.set(el.dataset.id, {
                     left: dragData.dropEvent.clientX - dragData.dragOffset.x,
@@ -149,7 +160,6 @@ class ActivitiesPage {
                         ${act ? `<button class="btn-square btn-danger" data-action="delete-act" title="删除活动">&times;</button>` : ''}
                     </div>
                 </div>
-
                 <main class="activity-canvas">
                     ${act ? this.renderActivityDetail(act) : '<div class="canvas-placeholder"><p>点击上方 + 号新建一个活动</p></div>'}
                 </main>
@@ -159,10 +169,7 @@ class ActivitiesPage {
 
     renderActivityDetail(act) {
         return `
-            <div class="team-content-area">
-                ${this.renderTeam(act, this.currentTeamTab)}
-            </div>
-
+            <div class="team-content-area">${this.renderTeam(act, this.currentTeamTab)}</div>
             <div class="export-section">
                 <button class="btn btn-primary btn-copy" data-action="copy-text">复制</button>
                 <textarea id="export-text" class="export-textarea" readonly>${this.generateExportText(act)}</textarea>
@@ -171,72 +178,73 @@ class ActivitiesPage {
     }
 
     renderTeam(act, teamNum) {
-    const team = teamNum === 1 ? act.team1 : act.team2;
-    return `
-        <div class="team-panel" data-team="${teamNum}">
-            <div class="team-sub-header">
-                <div class="team-nav-group">
-                    <button class="btn-tab ${this.currentTeamTab === 1 ? 'active' : ''}" data-action="switch-team" data-team="1">团 1</button>
-                    <button class="btn-tab ${this.currentTeamTab === 2 ? 'active' : ''}" data-action="switch-team" data-team="2">团 2</button>
+        const team = teamNum === 1 ? act.team1 : act.team2;
+        return `
+            <div class="team-panel" data-team="${teamNum}">
+                <div class="team-sub-header">
+                    <div class="team-nav-group">
+                        <button class="btn-tab ${this.currentTeamTab === 1 ? 'active' : ''}" data-action="switch-team" data-team="1">团 1</button>
+                        <button class="btn-tab ${this.currentTeamTab === 2 ? 'active' : ''}" data-action="switch-team" data-team="2">团 2</button>
+                    </div>
+                    <input type="text" class="activity-desc-inline" value="${act.description || ''}" data-field="description" placeholder="点击输入活动说明...">
+                    <div class="team-ops">
+                        <button class="btn btn-primary btn-xs" data-action="add-group">新增活动组</button>
+                        <button class="btn btn-warning btn-xs" data-action="team-battle-result">战果录入</button>
+                        <button class="btn btn-danger btn-xs" data-action="clear-history">删某人记录</button>
+                    </div>
                 </div>
-
-                <input type="text" class="activity-desc-inline" 
-                       value="${act.description || ''}" 
-                       data-field="description" 
-                       placeholder="点击输入活动说明...">
-
-                <div class="team-ops">
-                    <button class="btn btn-primary btn-xs" data-action="add-group">新增活动组</button>
-                    <button class="btn btn-warning btn-xs" data-action="team-battle-result">战果录入</button>
-                    <button class="btn btn-danger btn-xs" data-action="clear-history">删某人记录</button>
+                <div class="full-width-groups">
+                    ${team.groups.map((g, i) => this.renderGroup(g, i, teamNum)).join('')}
                 </div>
-            </div>
-
-            <div class="full-width-groups">
-                ${team.groups.map((g, i) => this.renderGroup(g, i, teamNum)).join('')}
-            </div>
-
-            <div class="waiting-pool-box">
-                <h5>团 ${teamNum} 待选池 (可拖拽至上方活动组)</h5>
-                <div class="waiting-pool" data-drop-target="pool">
-                    ${this.renderMembersInActivity(team.unassignedIds, null, 'pool', teamNum, 'pool')}
+                <div class="waiting-pool-box">
+                    <h5>团 ${teamNum} 待选池 （ 可拖拽至上方活动组, 点击成员方块右上角可切换团号 ）</h5>
+                    <div class="waiting-pool" data-drop-target="pool">
+                        ${this.renderMembersInActivity(team.unassignedIds, null, [], 'pool', teamNum, 'pool')}
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
     }
 
     renderGroup(group, index, teamNum) {
         return `
             <div class="activity-group-full" data-team="${teamNum}" data-group-index="${index}">
                 <div class="btn-group-del" data-action="delete-group" title="删除该组">&times;</div>
-                
                 <div class="group-title-row">
                     <input type="text" class="group-name-edit" value="${group.name}" placeholder="活动组名" data-action="edit-group-name">
                     <input type="text" class="group-desc-edit" value="${group.description === '无' ? '' : group.description}" placeholder="点击输入小组说明..." data-action="edit-group-desc">
                 </div>
-                
                 <div class="group-members-row" data-drop-target="group" data-group-index="${index}">
                     <div class="add-member-square" data-action="show-selector" title="多选添加组员"></div>
-                    ${this.renderMembersInActivity(group.memberIds, group.leaderId, 'group', teamNum, index)}
+                    ${this.renderMembersInActivity(group.memberIds, group.leaderId, group.substituteIds || [], 'group', teamNum, index)}
                 </div>
             </div>
         `;
     }
 
-    renderMembersInActivity(memberIds, leaderId = null, context = 'group', teamNum, groupIdx) {
+    renderMembersInActivity(memberIds, leaderId = null, substituteIds = [], context = 'group', teamNum, groupIdx) {
         const members = memberIds.map(id => this.dataManager.members.findById(id)).filter(Boolean);
         
+        // 【核心修复】：三级排序策略 (组长优先 > 替补最后 > 战力排序)
         members.sort((a, b) => {
-            if (a.id === leaderId) return -1;
-            if (b.id === leaderId) return 1;
+            // 1. 组长强制第一
+            if (a.id === leaderId && b.id !== leaderId) return -1;
+            if (b.id === leaderId && a.id !== leaderId) return 1;
+            
+            // 2. 替补强制最后
+            const aIsSub = substituteIds.includes(a.id);
+            const bIsSub = substituteIds.includes(b.id);
+            if (aIsSub && !bIsSub) return 1;
+            if (!aIsSub && bIsSub) return -1;
+            
+            // 3. 常规成员按战力排
             return (a.powerRank || 999) - (b.powerRank || 999);
         });
 
         return members.map(m => {
             const isLeader = m.id === leaderId;
+            const isSubstitute = substituteIds.includes(m.id);
             
-            // 左上角：近三场平均排名
             const battleRecords = m.activityHistory.filter(h => h.type === 'battle' && h.rank !== null);
             let avgRank = '-';
             if (battleRecords.length > 0) {
@@ -244,7 +252,6 @@ class ActivitiesPage {
                 avgRank = (recent.reduce((a, b) => a + b.rank, 0) / recent.length).toFixed(1);
             }
 
-            // 右上角：出勤判定
             const recentHistory = m.activityHistory.filter(h => h.type !== 'unparticipated').slice(-3);
             let missCount = 0;
             recentHistory.forEach(h => { 
@@ -259,23 +266,18 @@ class ActivitiesPage {
                 else attText = "死";
             }
 
-            // 悬浮按钮：待选池是跨团箭头，组内是蓝色移出箭头
             const actionBtn = context === 'pool' 
                 ? `<div class="btn-switch-team" data-action="switch-team-pool" title="移至另一团">➔</div>`
                 : `<div class="btn-remove-down" data-action="remove-from-group" title="移出活动组">↓</div>`;
 
             return `
-            <div class="member-entity rank-${m.rank} ${isLeader ? 'leader-style' : ''}" 
-                 data-id="${m.id}" 
-                 draggable="true" 
-                 data-source-team="${teamNum}" 
-                 data-source-group="${groupIdx}">
+            <div class="member-entity rank-${m.rank} ${isLeader ? 'leader-style' : ''} ${isSubstitute ? 'substitute-style' : ''}" 
+                 data-id="${m.id}" draggable="true" data-source-team="${teamNum}" data-source-group="${groupIdx}">
                 <div class="leader-badge">组长</div>
+                ${isSubstitute ? `<div class="substitute-badge">替补</div>` : ''}
                 ${actionBtn}
-                
                 <div class="top-left-badge">${avgRank}</div>
                 <div class="top-right-badge">${attText}</div>
-                
                 <div class="entity-name">${m.nickname}</div>
                 <div class="entity-info-index">${m.powerRank || ''}</div>
                 <div class="entity-rank">${m.rank}</div>
@@ -287,22 +289,16 @@ class ActivitiesPage {
     initDragAndDrop() {
         let draggedMemberId = null;
         let dragSource = null;
-        let dragOffset = { x: 0, y: 0 }; // 【新增】：记录鼠标点击位置与卡片左上角的偏差坐标
+        let dragOffset = { x: 0, y: 0 }; 
 
         this.container.addEventListener('dragstart', (e) => {
             const entity = e.target.closest('.member-entity');
             if (entity) {
                 draggedMemberId = entity.dataset.id;
-                dragSource = {
-                    team: parseInt(entity.dataset.sourceTeam),
-                    groupIndex: entity.dataset.sourceGroup 
-                };
-                
-                // 【核心逻辑】：记录抓取时，鼠标处于卡片内部的什么位置
+                dragSource = { team: parseInt(entity.dataset.sourceTeam), groupIndex: entity.dataset.sourceGroup };
                 const rect = entity.getBoundingClientRect();
                 dragOffset.x = e.clientX - rect.left;
                 dragOffset.y = e.clientY - rect.top;
-
                 setTimeout(() => entity.classList.add('dragging'), 0);
             }
         });
@@ -338,7 +334,6 @@ class ActivitiesPage {
             const act = this.dataManager.activities.findById(this.currentActivityId);
             if (!act) return;
 
-            // 【核心逻辑】：将拖拽松手的事件(e)、拖动的ID和偏差，全套传递给动画引擎
             this.applyStateWithAnimation(() => {
                 const sourceTeamObj = dragSource.team === 1 ? act.team1 : act.team2;
                 if (dragSource.groupIndex === 'pool') {
@@ -347,6 +342,9 @@ class ActivitiesPage {
                     const gIdx = parseInt(dragSource.groupIndex);
                     sourceTeamObj.groups[gIdx].memberIds = sourceTeamObj.groups[gIdx].memberIds.filter(id => id !== draggedMemberId);
                     if (sourceTeamObj.groups[gIdx].leaderId === draggedMemberId) sourceTeamObj.groups[gIdx].leaderId = null;
+                    if (sourceTeamObj.groups[gIdx].substituteIds) {
+                        sourceTeamObj.groups[gIdx].substituteIds = sourceTeamObj.groups[gIdx].substituteIds.filter(id => id !== draggedMemberId);
+                    }
                 }
 
                 const targetTeamObj = this.currentTeamTab === 1 ? act.team1 : act.team2;
@@ -363,6 +361,35 @@ class ActivitiesPage {
     }
 
     bindGlobalEvents() {
+        // 【核心修复】：拦截右键 (扩大屏蔽范围至整个活动组，防止点快了穿透)
+        this.container.addEventListener('contextmenu', (e) => {
+            const groupCard = e.target.closest('.activity-group-full');
+            if (groupCard) {
+                e.preventDefault(); // 只要在小组面板内右键，绝对不弹出浏览器系统菜单
+                
+                const entity = e.target.closest('.member-entity');
+                if (entity && !this.isAnimating) {
+                    const act = this.dataManager.activities.findById(this.currentActivityId);
+                    const group = (groupCard.dataset.team == 1 ? act.team1 : act.team2).groups[groupCard.dataset.groupIndex];
+                    
+                    this.applyStateWithAnimation(() => {
+                        group.substituteIds = group.substituteIds || [];
+                        const id = entity.dataset.id;
+                        
+                        if (group.substituteIds.includes(id)) {
+                            // 取消替补
+                            group.substituteIds = group.substituteIds.filter(sId => sId !== id);
+                        } else {
+                            // 设为替补
+                            group.substituteIds.push(id);
+                            // 【互斥逻辑】：如果已经是组长，撤销组长身份
+                            if (group.leaderId === id) group.leaderId = null;
+                        }
+                    });
+                }
+            }
+        });
+
         this.container.addEventListener('input', (e) => {
             const act = this.dataManager.activities.findById(this.currentActivityId);
             if (!act) return;
@@ -380,11 +407,8 @@ class ActivitiesPage {
                 this.dataManager.save();
             }
 
-            // 【新增】：打字时实时更新最底部的导出文本框
             const exportArea = this.container.querySelector('#export-text');
-            if (exportArea) {
-                exportArea.value = this.generateExportText(act);
-            }
+            if (exportArea) exportArea.value = this.generateExportText(act);
         });
 
         this.container.addEventListener('change', (e) => {
@@ -398,14 +422,23 @@ class ActivitiesPage {
             const actionBtn = e.target.closest('[data-action]');
             const act = this.dataManager.activities.findById(this.currentActivityId);
             
-            // 点击设为组长 - 触发排队挤压移动动画
+            // 左键点击卡片 (设置/取消组长)
             const entity = e.target.closest('.member-entity');
             if (entity && !actionBtn && !this.isAnimating) {
                 const groupCard = entity.closest('.activity-group-full');
                 if (groupCard) {
                     const group = (groupCard.dataset.team == 1 ? act.team1 : act.team2).groups[groupCard.dataset.groupIndex];
                     this.applyStateWithAnimation(() => {
-                        group.leaderId = (group.leaderId === entity.dataset.id) ? null : entity.dataset.id;
+                        const id = entity.dataset.id;
+                        if (group.leaderId === id) {
+                            group.leaderId = null;
+                        } else {
+                            group.leaderId = id;
+                            // 【互斥逻辑】：如果已经是替补，撤销替补身份
+                            if (group.substituteIds) {
+                                group.substituteIds = group.substituteIds.filter(sId => sId !== id);
+                            }
+                        }
                     });
                     return;
                 }
@@ -421,8 +454,7 @@ class ActivitiesPage {
                     break;
                 case 'add-group':
                     const team = this.currentTeamTab === 1 ? act.team1 : act.team2;
-                    const nextNum = team.groups.length + 1;
-                    team.groups.push(new ActivityGroup({ name: `组${nextNum}` }));
+                    team.groups.push(new ActivityGroup({ name: `组${team.groups.length + 1}` }));
                     this.saveAndRefresh();
                     break;
                 case 'delete-group':
@@ -489,10 +521,33 @@ class ActivitiesPage {
                     if (!act) return;
                     this.renameActModal.onSave = (newName) => {
                         act.name = newName;
-                        // 修改后立即刷新，底部的导出文案也会同步更新
                         this.saveAndRefresh();
                     };
                     this.renameActModal.render(act.name);
+                    break;
+                
+                // 【新增】：处理底部的复制按钮与动态提示
+                case 'copy-text':
+                    const exportArea = this.container.querySelector('#export-text');
+                    if (exportArea) {
+                        exportArea.select();
+                        // 兼容性极佳的复制命令
+                        document.execCommand('copy'); 
+                        
+                        // 按钮状态反馈
+                        const originalText = actionBtn.innerText;
+                        const originalBg = actionBtn.style.background;
+                        
+                        actionBtn.innerText = '✅ 已复制';
+                        actionBtn.style.background = '#10b981'; // 变绿
+                        actionBtn.style.color = '#fff';
+                        
+                        // 1.5秒后恢复原状
+                        setTimeout(() => {
+                            actionBtn.innerText = originalText;
+                            actionBtn.style.background = originalBg;
+                        }, 1500);
+                    }
                     break;
             }
         });
@@ -504,10 +559,12 @@ class ActivitiesPage {
         const team = this.currentTeamTab === 1 ? act.team1 : act.team2;
         const group = team.groups[card.dataset.groupIndex];
         
-        const available = team.unassignedIds.map(id => this.dataManager.members.findById(id)).filter(Boolean);
+        const available = team.unassignedIds
+            .map(id => this.dataManager.members.findById(id))
+            .filter(Boolean)
+            .sort((a, b) => (a.powerRank || 999) - (b.powerRank || 999));
         
         this.selectorModal.onConfirm = (ids) => {
-            // 通过 FLIP 引擎让组员加入时有过渡感
             this.applyStateWithAnimation(() => {
                 group.memberIds.push(...ids);
                 team.unassignedIds = team.unassignedIds.filter(id => !ids.includes(id));
@@ -523,6 +580,7 @@ class ActivitiesPage {
                 if (g.memberIds.includes(mId)) {
                     g.memberIds = g.memberIds.filter(id => id !== mId);
                     if (g.leaderId === mId) g.leaderId = null;
+                    if (g.substituteIds) g.substituteIds = g.substituteIds.filter(id => id !== mId);
                     team.unassignedIds.push(mId);
                 }
             });
@@ -550,32 +608,28 @@ class ActivitiesPage {
         const teamNum = this.currentTeamTab;
         const team = teamNum === 1 ? act.team1 : act.team2;
         
-        // 1. 处理活动头部：【活动名-团x】
         const headerTitle = `【${act.name}-团${teamNum}】`;
         const actDesc = (act.description && act.description.trim() !== '') ? act.description.trim() : '';
-        
-        // 如果没有活动说明，不写“：”，直接换行
         let text = actDesc ? `${headerTitle}：${actDesc}\n` : `${headerTitle}\n`;
 
-        // 2. 处理各组数据
         team.groups.forEach(g => {
             const members = g.memberIds.map(id => this.dataManager.members.findById(id)).filter(Boolean);
             const leader = members.find(m => m.id === g.leaderId);
-            const others = members.filter(m => m.id !== g.leaderId).map(m => m.nickname).join('、');
+            const substitutes = members.filter(m => (g.substituteIds || []).includes(m.id) && m.id !== g.leaderId);
+            const others = members.filter(m => m.id !== g.leaderId && !(g.substituteIds || []).includes(m.id));
             
-            // 组长与成员使用 " - " 连接
             let memberStrs = [];
+            // 【核心修复】：调整 push 的顺序为 组长 -> 成员 -> 替补
             if (leader) memberStrs.push(`组长 - ${leader.nickname}`);
-            if (others) memberStrs.push(`成员 - ${others}`);
+            if (others.length > 0) memberStrs.push(`成员 - ${others.map(m => m.nickname).join('、')}`);
+            if (substitutes.length > 0) memberStrs.push(`替补 - ${substitutes.map(m => m.nickname).join('、')}`);
+            
             const memberText = memberStrs.join('；');
 
             const gDesc = (g.description && g.description.trim() !== '' && g.description !== '无') ? g.description.trim() : '';
-            
             if (gDesc) {
-                // 有小组说明时：组名行之后，组员另起一行
                 text += `【${g.name}】：${gDesc}\n${memberText}\n`;
             } else {
-                // 无小组说明时：组员直接紧跟在组名冒号之后
                 text += `【${g.name}】：${memberText}\n`;
             }
         });

@@ -1,67 +1,132 @@
+/* ui/components/seatSelectorModal.js */
 class SeatSelectorModal {
     constructor(container) {
         this.container = container;
-        this.onSelect = null;
+        this.onConfirm = null;
+        
+        // 【核心修复】：为弹窗初始化内存集合，避免点击时崩溃
+        this.selectedIds = new Set(); 
+        this.allMembers = [];
     }
 
-    render(unseatedMembers, seatedMembers) {
-        // 【核心修复】：优先按活跃度降序（0活跃>1半活跃>2不活跃），再按战力排列
-        const sortFn = (a, b) => {
-            const statusA = a.activityStatus || 0;
-            const statusB = b.activityStatus || 0;
-            if (statusA !== statusB) return statusA - statusB;
-            return (a.powerRank || 999) - (b.powerRank || 999);
-        };
-        
-        unseatedMembers.sort(sortFn);
-        seatedMembers.sort(sortFn);
+    render(members) {
+        // 【核心修复】：按战力 (powerRank) 自动排序，前高后低
+        this.allMembers = [...members].sort((a, b) => (a.powerRank || 999) - (b.powerRank || 999));
+        this.selectedIds.clear();
 
-        // 【核心修复】：在 className 中补充了 status-${m.activityStatus || 0}
-        const renderCards = (members) => members.map(m => `
-            <div class="member-entity rank-${m.rank} status-${m.activityStatus || 0} selector-card" data-id="${m.id}" style="width:var(--cell-size); height:var(--cell-size); position:relative; cursor:pointer; flex-shrink:0; margin:0;" title="${m.nickname}">
-                <div class="entity-name" style="font-size:10px; font-weight:bold; display:flex; align-items:center; justify-content:center; height:100%;">${m.nickname}</div>
-                <div class="entity-info-index" style="position:absolute; bottom:2px; left:2px; font-size:8px; opacity:0.5;">${m.powerRank || ''}</div>
-                <div class="entity-rank" style="position:absolute; bottom:2px; right:2px; font-size:8px; font-weight:bold;">${m.rank}</div>
-            </div>
-        `).join('');
-
-        const html = `
-            <div class="modal modal-selector" id="modal-seat-selector">
-                <div class="modal-header">
-                    <h2>安排入座</h2>
-                    <button class="modal-close" data-action="close">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p style="font-size:13px; color:var(--gray-700); margin-bottom:15px;">
-                        请选择一位在盟成员入座。（<span style="color:var(--warning); font-weight:bold;">橙框</span>半活跃，<span style="color:var(--danger); font-weight:bold;">红框</span>不活跃）
-                    </p>
-                    
-                    <h4 style="margin-bottom: 8px; border-left: 3px solid var(--primary); padding-left: 8px;">未落座成员</h4>
-                    <div class="group-members-row" style="background: var(--gray-100); padding: 10px; border-radius: 8px; margin-bottom: 20px; min-height: 65px; display: flex; flex-wrap: wrap; gap: 8px;">
-                        ${unseatedMembers.length > 0 ? renderCards(unseatedMembers) : '<div style="color:var(--gray-400); font-size:12px; padding:10px;">暂无</div>'}
+        this.container.innerHTML = `
+            <div class="modal-overlay">
+                <div class="modal modal-selector" style="width: 600px;">
+                    <div class="modal-header">
+                        <h2>选择成员落座</h2>
+                        <button class="modal-close" data-action="close">&times;</button>
                     </div>
-
-                    <h4 style="margin-bottom: 8px; border-left: 3px solid var(--warning); padding-left: 8px;">已落座成员 (选择将导致其转移座位)</h4>
-                    <div class="group-members-row" style="background: var(--gray-100); padding: 10px; border-radius: 8px; min-height: 65px; display: flex; flex-wrap: wrap; gap: 8px;">
-                        ${seatedMembers.length > 0 ? renderCards(seatedMembers) : '<div style="color:var(--gray-400); font-size:12px; padding:10px;">暂无</div>'}
+                    <div class="modal-body">
+                        <div class="search-box" style="margin-bottom: 15px;">
+                            <input type="text" id="selector-search" placeholder="支持姓名、ID、职级、拼音首字母搜索..." 
+                                   style="width: 100%; padding: 8px; border: 1px solid var(--gray-300); border-radius: 4px;">
+                        </div>
+                        <div class="selector-grid" id="selector-member-grid" 
+                             style="display: grid; 
+                                    grid-template-columns: repeat(auto-fill, var(--cell-size)); 
+                                    gap: var(--grid-gap); 
+                                    justify-content: center;
+                                    max-height: 400px; 
+                                    overflow-y: auto; 
+                                    padding: 10px;
+                                    background: var(--gray-100);
+                                    border-radius: 8px;">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <span id="selected-count" style="margin-right: auto; color: var(--gray-600); font-size: 13px;">已选择: <b id="count-num">0</b> 人</span>
+                        <button class="btn" data-action="close">取消</button>
+                        <button class="btn btn-primary" id="btn-selector-confirm">确认落座</button>
                     </div>
                 </div>
             </div>
         `;
 
-        this.container.innerHTML = html;
         this.container.classList.remove('hidden');
+        this.updateGrid(); 
         this.bindEvents();
     }
 
-    bindEvents() {
-        this.container.querySelector('[data-action="close"]').onclick = () => this.close();
+    updateGrid(query = '') {
+        const grid = this.container.querySelector('#selector-member-grid');
+        if (!grid) return;
         
-        this.container.querySelectorAll('.selector-card').forEach(item => {
-            item.onclick = () => {
-                if (this.onSelect) this.onSelect(item.dataset.id);
-                this.close();
-            };
+        const q = query.toLowerCase().trim();
+
+        const checkMatch = (m) => {
+            if (!q) return false;
+            const basicMatch = m.nickname.toLowerCase().includes(q) || 
+                               m.id.toLowerCase().includes(q) || 
+                               m.rank.toLowerCase().includes(q);
+
+            let pinyinMatch = false;
+            if (typeof PinyinMatch !== 'undefined') {
+                pinyinMatch = PinyinMatch.match(m.nickname, q) || 
+                              (m.pastNicknames && m.pastNicknames.some(pn => PinyinMatch.match(pn, q)));
+            }
+            return basicMatch || pinyinMatch;
+        };
+
+        grid.innerHTML = this.allMembers.map(m => {
+            const isSelected = this.selectedIds.has(m.id);
+            const isMatch = checkMatch(m);
+
+            // 黑色粗框与紫框共存
+            const selectedStyle = isSelected 
+                ? 'border: 3px solid #18181b !important; box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important; z-index: 10; transform: scale(1.05);' 
+                : 'border: 1px solid transparent;';
+
+            return `
+                <div class="member-entity rank-${m.rank} ${isMatch ? 'search-match' : ''}" 
+                     data-id="${m.id}" 
+                     style="cursor: pointer; position: relative; width: var(--cell-size); height: var(--cell-size); transition: all 0.2s; ${selectedStyle}">
+                    <div class="entity-name" style="font-size:10px;">${m.nickname}</div>
+                    <div class="entity-info-index">${m.powerRank || ''}</div>
+                    <div class="entity-rank">${m.rank}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    bindEvents() {
+        const searchInput = this.container.querySelector('#selector-search');
+        if (searchInput) {
+            searchInput.oninput = (e) => this.updateGrid(e.target.value);
+        }
+
+        const grid = this.container.querySelector('#selector-member-grid');
+        grid.onclick = (e) => {
+            const card = e.target.closest('.member-entity');
+            if (!card) return;
+
+            const id = card.dataset.id;
+            
+            // 【特殊优化】：由于座位只能坐一个人，这里实现“排他单选”
+            if (this.selectedIds.has(id)) {
+                this.selectedIds.delete(id);
+            } else {
+                this.selectedIds.clear(); // 清空之前选中的人
+                this.selectedIds.add(id);
+            }
+            
+            this.updateGrid(searchInput ? searchInput.value : '');
+            this.container.querySelector('#count-num').innerText = this.selectedIds.size;
+        };
+
+        this.container.querySelector('#btn-selector-confirm').onclick = () => {
+            if (this.selectedIds.size === 0) return alert('请至少选择一名成员落座');
+            // 回传 ID 数组
+            if (this.onConfirm) this.onConfirm(Array.from(this.selectedIds));
+            this.close();
+        };
+
+        this.container.querySelectorAll('[data-action="close"]').forEach(btn => {
+            btn.onclick = () => this.close();
         });
     }
 

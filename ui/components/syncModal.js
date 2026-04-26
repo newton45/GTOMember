@@ -96,6 +96,28 @@ class SyncModal {
             </label>
         `).join('');
 
+        // 【核心新增】：找出“云端独有”的活动，生成删除选项
+        let deleteActHtml = '';
+        if (isUp) {
+            const localActIds = new Set(acts.map(a => a.id));
+            const remoteActs = targetData.activities || [];
+            // 过滤出在 target(云端) 里，但不在 local(本地) 里的活动
+            const cloudOnlyActs = remoteActs.filter(a => !localActIds.has(a.id));
+            
+            if (cloudOnlyActs.length > 0) {
+                deleteActHtml = `
+                    <div style="border-top: 1px dashed #ef4444; margin: 15px 0;"></div>
+                    <p style="font-size:12px; color:#ef4444; margin-bottom:10px; font-weight:bold;">⚠️ 以下活动仅存在于云端，可勾选删除：</p>
+                    ${cloudOnlyActs.map(a => `
+                        <label style="display:flex; align-items:center; gap:8px; margin: 8px 0; cursor:pointer; color:#ef4444;">
+                            <input type="checkbox" name="sync-item" value="del_act_${a.id}" style="width:16px; height:16px; accent-color: #ef4444;"> 
+                            🗑️ 删除云端活动 - ${a.name}
+                        </label>
+                    `).join('')}
+                `;
+            }
+        }
+
         const html = `
             <div class="modal-overlay">
                 <div class="modal modal-selector" style="width: 420px;">
@@ -128,6 +150,7 @@ class SyncModal {
                             
                             <div style="max-height: 150px; overflow-y: auto;">
                                 ${actCheckboxes || '<div style="color:var(--gray-400); font-size:12px; text-align:center; padding: 10px;">暂无活动数据</div>'}
+                                ${deleteActHtml}
                             </div>
                         </div>
                     </div>
@@ -141,7 +164,6 @@ class SyncModal {
 
         this.container.innerHTML = html;
         
-        // 绑定确认按钮业务逻辑
         const confirmBtn = this.container.querySelector('#btn-confirm-sync');
         if (confirmBtn) {
             confirmBtn.onclick = async () => {
