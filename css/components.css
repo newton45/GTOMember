@@ -68,3 +68,29 @@
 .rank-item { padding: 8px 24px; font-size: 12px; font-weight: bold; cursor: pointer; text-align: center; border-bottom: 1px solid var(--gray-100); transition: background 0.1s; }
 .rank-item:last-child { border-bottom: none; }
 .rank-item:hover { filter: brightness(0.9); }
+
+/* 页面标题栏的帮助按钮 */
+.btn-page-help {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--success, #10b981); /* 如果没有定义var，则退化为默认绿 */
+    color: white;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 12px;
+    font-size: 14px;
+    vertical-align: middle;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-page-help:hover {
+    background-color: #059669;
+    transform: scale(1.15) rotate(10deg);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.4);
+}

@@ -4,6 +4,7 @@ class MembersPage {
         this.gridContainer = document.getElementById('members-grid');
         this.modal = new MemberModal(modalContainer);
         this.batchModal = new BatchAddModal(modalContainer); 
+        this.helpModal = new HelpModal(modalContainer); // 【新增】实例化帮助组件       
         this.isAnimating = false;
         
         this.bindToolbarEvents();
@@ -57,6 +58,12 @@ class MembersPage {
         const searchInput = document.getElementById('search-member');
         if(searchInput) {
             searchInput.oninput = (e) => this.render(e.target.value);
+        }
+
+        // 【新增】绑定成员页的帮助按钮
+        const helpBtn = document.getElementById('btn-help-members');
+        if (helpBtn) {
+            helpBtn.onclick = () => this.helpModal.render('members');
         }
     }
 

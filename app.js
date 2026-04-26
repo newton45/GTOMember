@@ -35,6 +35,37 @@ document.addEventListener('DOMContentLoaded', () => {
         // 从本地缓存读取上次最后访问的页面
         const lastActivePage = localStorage.getItem('App_lastActivePage') || 'page-members';
 
+        // 【1. 定义状态机守卫】
+        // 将其挂载到 window 对象上，使其成为一个具有上帝视角的全局探针
+        window.triggerEmptyStateGuard = function(triggerSource = 'init') {
+            
+            // 核心判定：底层成员数据池彻底为空
+            if (dataManager.members.getAll().length === 0) {
+                
+                // 宏任务延迟：非常关键的防死锁机制。
+                // 确保页面的初次渲染，或“清空”操作导致的 DOM 销毁已经彻底完成，再弹出 confirm，避免卡死主线程。
+                setTimeout(() => {
+                    const promptMsg = triggerSource === 'cleared' 
+                        ? "系统底层数据已被全部清空（当前为纯白板状态）。\n\n是否需要打开【云端同步】面板加载默认设置？"
+                        : "检测到当前为初始空白系统（未发现任何成员数据）。\n\n是否需要从云端拉取已有数据？";
+
+                    if (confirm(promptMsg)) {
+                        // 【低耦合调用】：不去 import 云端逻辑，直接模拟点击顶层导航栏的云端按钮
+                        const downloadBtn = document.getElementById('btn-cloud-download');
+                        if (downloadBtn) {
+                            downloadBtn.click();
+                        } else {
+                            console.warn("状态守卫：未检测到 DOM 树中存在云端读取按钮");
+                        }
+                    }
+                }, 150); 
+            }
+        };
+
+        // 【2. 生命周期注入】
+        // 系统初始运行到此处时，静默执行一次初始探针
+        window.triggerEmptyStateGuard('init');
+
         navButtons.forEach(btn => {
             const targetId = btn.dataset.target || `page-${btn.dataset.page}`;
             btn.classList.toggle('active', targetId === lastActivePage);
@@ -118,6 +149,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     dataManager.members.data = [];
                     dataManager.activities.data = [];
                     window.location.reload();
+
+                    // 呼叫全局探针，标记来源为 'cleared'
+                    if (typeof window.triggerEmptyStateGuard === 'function') {
+                        window.triggerEmptyStateGuard('cleared');
+                    }
                 }
             });
         }

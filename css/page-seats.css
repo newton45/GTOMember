@@ -293,3 +293,29 @@
     opacity: 1 !important;
     filter: none !important;
 }
+
+/* 跨团成员降权显示 */
+.other-bear-dim {
+    opacity: 0.5;
+    filter: grayscale(30%);
+}
+
+/* 选中态：最高优先级 */
+.selected-target {
+    border: 3px solid #18181b !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+    transform: scale(1.1);
+    z-index: 10;
+    opacity: 1 !important; /* 选中时无视降权 */
+}
+
+/* 搜索匹配态：优先级仅次于选中 */
+.search-match {
+    outline: 3px solid #ff00e1 !important;
+    outline-offset: 2px;
+    opacity: 1 !important;
+}
+
+/* 默认活跃度色彩框（色彩深浅请根据变量调整） */
+.member-entity.status-1 { border: 2px solid var(--warning); }
+.member-entity.status-2 { border: 2px solid var(--danger); }

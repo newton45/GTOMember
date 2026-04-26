@@ -4,7 +4,7 @@ class SeatPage {
         this.container = document.getElementById('page-seats');
         this.modalContainer = modalContainer;
         
-        this.selectorModal = new SeatSelectorModal(modalContainer);
+        this.selectorModal = new SeatSelectorModal(modalContainer, dataManager);
         this.levelSelectorModal = new LevelSelectorModal(modalContainer);
         
         this.config = { tileSize: 30, angle: 35.28, renderRadius: 35, showGrid: true };
@@ -17,7 +17,10 @@ class SeatPage {
 
         this.currentMode = 'normal'; // 'normal' | 'obstacle'
         this.obstacleDrawState = null;
-        
+        this.clearMapModal = new ClearMapModal(modalContainer); // 初始化新弹窗
+
+        this.helpModal = new HelpModal(modalContainer);
+
         this.initSeatData();
         this.init();
         
@@ -68,19 +71,24 @@ class SeatPage {
         });
         // ==========================================
         
-        // 获取全部有效在盟成员，查漏补缺（把新增的人丢进 bear1 待选池）
+        // 获取全部有效在盟成员，查漏补缺
         const allMembers = this.dataManager.members.getAll().filter(m => !m.leftAlliance);
         const assignedIds = new Set();
         ['bear1', 'bear2'].forEach(trap => {
             this.dataManager.seatData[trap].seats.forEach(s => { if(s.memberId) assignedIds.add(s.memberId); });
             this.dataManager.seatData[trap].unseated.forEach(id => assignedIds.add(id));
         });
+        
+        // --- 【核心修复：根据 targetBear 放入对应的待选池】 ---
         allMembers.forEach(m => {
-            if (!assignedIds.has(m.id)) this.dataManager.seatData.bear1.unseated.push(m.id);
+            if (!assignedIds.has(m.id)) {
+                const targetTrap = m.targetBear === 'bear2' ? 'bear2' : 'bear1';
+                this.dataManager.seatData[targetTrap].unseated.push(m.id);
+            }
         });
         
         // 保存清洗后的数据
-        this.saveData(); 
+        this.saveData();
     }
 
     init() {
@@ -146,68 +154,70 @@ class SeatPage {
     }
 
     renderSkeleton() {
-    const bearName = this.currentTab === 'bear1' ? '熊 1' : '熊 2';
-    this.container.innerHTML = `
-        <style>
-            /* 核心布局修复：改为横向排列并优化间距 */
-            .seat-tools-row { 
-                display: flex; 
-                flex-direction: row; 
-                gap: 10px; 
-                padding: 15px;
-                background: var(--gray-50);
-                border-bottom: 1px solid var(--gray-200);
-            }
-            .btn-seat-tool { 
-                padding: 8px 16px; 
-                border: 1px solid var(--gray-300); 
-                background: #fff; 
-                border-radius: 4px; 
-                cursor: pointer; 
-                font-size: 13px; 
-                color: var(--gray-700); 
-                font-weight: bold; 
-                transition: all 0.2s; 
-                white-space: nowrap;
-            }
-            .btn-seat-tool:hover { background: var(--gray-100); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-            .btn-seat-tool.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-        </style>
-        
-        <div class="activities-layout-vertical page-seats">
-            <div class="activity-topbar" style="flex-direction: column; align-items: flex-start; gap: 0; height: auto; padding: 0;">
-                <div class="topbar-left" style="display: flex; align-items: center; gap: 30px; width: 100%; flex-wrap: wrap; padding: 15px 20px; border-bottom: 1px solid var(--gray-200);">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span class="topbar-label">当前地图：</span>
-                        <div class="team-tabs" id="seat-map-tabs">
-                            <button class="btn-tab" data-action="switch-tab" data-tab="bear1">熊 1</button>
-                            <button class="btn-tab" data-action="switch-tab" data-tab="bear2">熊 2</button>
+        const bearName = this.currentTab === 'bear1' ? '熊 1' : '熊 2';
+        this.container.innerHTML = `
+            <style>
+                /* 核心布局修复：改为横向排列并优化间距 */
+                .seat-tools-row { 
+                    display: flex; 
+                    flex-direction: row; 
+                    gap: 10px; 
+                    padding: 15px;
+                    background: var(--gray-50);
+                    border-bottom: 1px solid var(--gray-200);
+                }
+                .btn-seat-tool { 
+                    padding: 8px 16px; 
+                    border: 1px solid var(--gray-300); 
+                    background: #fff; 
+                    border-radius: 4px; 
+                    cursor: pointer; 
+                    font-size: 13px; 
+                    color: var(--gray-700); 
+                    font-weight: bold; 
+                    transition: all 0.2s; 
+                    white-space: nowrap;
+                }
+                .btn-seat-tool:hover { background: var(--gray-100); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+                .btn-seat-tool.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+            </style>
+            
+            <div class="activities-layout-vertical page-seats">
+                <div class="activity-topbar" style="flex-direction: column; align-items: flex-start; gap: 0; height: auto; padding: 0;">
+                    <div class="topbar-left" style="display: flex; align-items: center; gap: 30px; width: 100%; flex-wrap: wrap; padding: 15px 20px; border-bottom: 1px solid var(--gray-200);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="topbar-label">当前地图：</span>
+                            <button class="btn-page-help" data-action="show-help-seats" title="沙盘操作指南">?</button>
+                            <div class="team-tabs" id="seat-map-tabs">
+                                <button class="btn-tab" data-action="switch-tab" data-tab="bear1">熊 1</button>
+                                <button class="btn-tab" data-action="switch-tab" data-tab="bear2">熊 2</button>
+                            </div>
+                        </div>
+                        <div class="trap-coord-inputs" style="display: flex; align-items: center; gap: 10px; font-weight: bold; color: var(--gray-700);">
+                            <span>当前陷阱位置：</span>
+                            <span>x=<input type="number" id="input-anchor-x" value="${this.anchors[this.currentTab].x}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
+                            <span>y=<input type="number" id="input-anchor-y" value="${this.anchors[this.currentTab].y}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
                         </div>
                     </div>
-                    <div class="trap-coord-inputs" style="display: flex; align-items: center; gap: 10px; font-weight: bold; color: var(--gray-700);">
-                        <span>当前陷阱位置：</span>
-                        <span>x=<input type="number" id="input-anchor-x" value="${this.anchors[this.currentTab].x}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
-                        <span>y=<input type="number" id="input-anchor-y" value="${this.anchors[this.currentTab].y}" style="width: 70px; padding: 4px 6px; margin-left: 4px; border: 1px solid var(--gray-300); border-radius: 4px; outline: none;"></span>
+                    
+                    <div class="seat-tools-row" style="width: 100%;">
+                        <button class="btn-seat-tool" data-action="tool-member">成员标记</button>
+                        <button class="btn-seat-tool" data-action="tool-auto">自动落座</button>
+                        <button class="btn-seat-tool" id="btn-tool-obstacle" data-action="tool-obstacle">障碍标记</button>
+                        <button class="btn-seat-tool" id="btn-tool-save" data-action="tool-save">保存 ${bearName}</button>
+                        <button class="btn-seat-tool" id="btn-tool-load" data-action="tool-load">读取 ${bearName}</button>
+                        <button class="btn-seat-tool" id="btn-tool-clear-map" data-action="tool-clear-map" style="color: #ef4444; border-color: #fca5a5; background: #fef2f2;">清除 ${bearName}</button>
                     </div>
                 </div>
-                
-                <div class="seat-tools-row" style="width: 100%;">
-                    <button class="btn-seat-tool" data-action="tool-member">成员标记</button>
-                    <button class="btn-seat-tool" data-action="tool-auto">自动落座</button>
-                    <button class="btn-seat-tool" id="btn-tool-obstacle" data-action="tool-obstacle">障碍标记</button>
-                    <button class="btn-seat-tool" id="btn-tool-save" data-action="tool-save">保存 ${bearName}</button>
-                    <button class="btn-seat-tool" id="btn-tool-load" data-action="tool-load">读取 ${bearName}</button>
+
+                <div class="seat-map-wrapper" style="flex: 1; position: relative; overflow: hidden;">
+                    <main class="seat-viewport" id="seat-viewport">
+                        <div class="seat-canvas" id="seat-canvas"></div>
+                    </main>
                 </div>
             </div>
-
-            <div class="seat-map-wrapper" style="flex: 1; position: relative; overflow: hidden;">
-                <main class="seat-viewport" id="seat-viewport">
-                    <div class="seat-canvas" id="seat-canvas"></div>
-                </main>
-            </div>
-        </div>
-    `;
-}
+        `;
+    }
 
     updateUI() {
         const tabs = this.container.querySelectorAll('#seat-map-tabs .btn-tab');
@@ -646,26 +656,28 @@ class SeatPage {
                             // 3. 顺手保存，把硬盘里的脏数据也洗干净
                             this.dataManager.save(); 
 
-                            // 4. 过滤有效人员并调起选择框
-                            const availableMembers = trapData.unseated
-                                .map(id => this.dataManager.members.findById(id))
-                                .filter(Boolean)
-                                .sort((a, b) => (a.powerRank || 999) - (b.powerRank || 999));
-
+                            // 【核心修复 2】：使用新版动态选人逻辑，无需在外部预先过滤
                             this.selectorModal.onConfirm = (selectedIds) => {
                                 if (selectedIds.length === 0) return;
                                 const targetMemberId = selectedIds[0];
 
                                 // 1. 占座
                                 seatObj.memberId = targetMemberId;
-                                // 2. 待选池踢出
-                                trapData.unseated = trapData.unseated.filter(id => id !== targetMemberId);
+                                
+                                // 2. 从两个团的待选池中彻底移除该成员，确保跨团落座不留重影
+                                ['bear1', 'bear2'].forEach(t => {
+                                    const tData = this.dataManager.seatData[t];
+                                    if(tData.unseated) {
+                                        tData.unseated = tData.unseated.filter(id => id !== targetMemberId);
+                                    }
+                                });
                                 
                                 this.saveData();
                                 this.updateMap();
                             };
 
-                            this.selectorModal.render(availableMembers);
+                            // 直接传入当前的陷阱编号（如 'bear1'），弹窗会在内部自己算
+                            this.selectorModal.render(this.currentTab);
                         } else {
                             // 情况 B：如果座位上有人，点击时直接触发离座确认
                             if (confirm('是否让该成员离座并返回待选池？')) {
@@ -741,6 +753,10 @@ class SeatPage {
             const btn = e.target.closest('[data-action]');
             if (!btn) return;
             const action = btn.dataset.action;
+            
+            if (action === 'show-help-seats') {
+                this.helpModal.render('seats');
+            }
 
             if (action === 'switch-tab') {
                 this.currentTab = btn.dataset.tab;
@@ -753,30 +769,77 @@ class SeatPage {
                     inputY.value = this.anchors[this.currentTab].y;
                 }
                 
-                // 动态更新保存/读取按钮文字
+                // 动态更新保存/读取/清除按钮文字
                 const bearName = this.currentTab === 'bear1' ? '熊 1' : '熊 2';
                 this.container.querySelector('#btn-tool-save').innerText = `保存${bearName}`;
                 this.container.querySelector('#btn-tool-load').innerText = `读取${bearName}`;
+                // 【新增】：同步更新清除按钮名称
+                const clearBtn = this.container.querySelector('#btn-tool-clear-map');
+                if (clearBtn) clearBtn.innerText = `清除${bearName}`;
                 
-                this.currentMode = 'normal'; // 切换标签重置模式
-                this.updateUI(); this.centerOnTarget(); 
-
+                this.currentMode = 'normal';
+                this.updateUI(); this.centerOnTarget();
+                
             } else if (action === 'edit-coord') {
                 e.preventDefault(); e.stopPropagation(); 
                 const inputX = this.container.querySelector('#input-anchor-x');
                 if (inputX) inputX.focus();
                 
             } else if (action === 'tool-save') {
-                // 将当前数据深拷贝保存为快照
+                // 【核心重构】：不仅保存座位，还要提取并保存当前地图范围内的障碍物
                 const trapData = this.dataManager.seatData[this.currentTab];
-                localStorage.setItem(`SeatArchive_${this.currentTab}`, JSON.stringify(trapData));
-                alert(`${this.currentTab === 'bear1' ? '熊 1' : '熊 2'} 的布局已设为存档点！`);
+                const activeAnchor = this.anchors[this.currentTab];
+                const r = this.config.renderRadius; // 35 格
+                
+                // 提取当前地图视野内的障碍物坐标
+                const currentMapObstacles = (this.dataManager.seatData.globalObstacles || []).filter(key => {
+                    const [wx, wy] = key.split(',').map(Number);
+                    const dx = Math.abs(wx - activeAnchor.x);
+                    const dy = Math.abs(wy - activeAnchor.y);
+                    return dx <= r && dy <= r;
+                });
+
+                // 构造存档包
+                const archivePackage = {
+                    seats: trapData.seats,
+                    unseated: trapData.unseated,
+                    localObstacles: currentMapObstacles // 包含障碍物数据
+                };
+
+                localStorage.setItem(`SeatArchive_${this.currentTab}`, JSON.stringify(archivePackage));
+                alert(`${this.currentTab === 'bear1' ? '熊 1' : '熊 2'} 的布局（含障碍物）已设为存档点！`);
                 
             } else if (action === 'tool-load') {
-                const archive = localStorage.getItem(`SeatArchive_${this.currentTab}`);
-                if (archive) {
-                    if (confirm(`确定要读取存档吗？当前未保存的 ${this.currentTab === 'bear1' ? '熊 1' : '熊 2'} 布局将被覆盖。`)) {
-                        this.dataManager.seatData[this.currentTab] = JSON.parse(archive);
+                const archiveRaw = localStorage.getItem(`SeatArchive_${this.currentTab}`);
+                if (archiveRaw) {
+                    const bearName = this.currentTab === 'bear1' ? '熊 1' : '熊 2';
+                    if (confirm(`确定要读取存档吗？当前未保存的 ${bearName} 布局及障碍物将被覆盖。`)) {
+                        const archive = JSON.parse(archiveRaw);
+                        const activeAnchor = this.anchors[this.currentTab];
+                        const r = this.config.renderRadius;
+
+                        // 1. 恢复座位和待选池数据
+                        this.dataManager.seatData[this.currentTab].seats = archive.seats || [];
+                        this.dataManager.seatData[this.currentTab].unseated = archive.unseated || [];
+
+                        // 2. 更新全局障碍物：先清除当前地图区域的障碍物，再注入存档中的障碍物
+                        let globalObs = this.dataManager.seatData.globalObstacles || [];
+                        
+                        // 过滤掉当前区域的老障碍物
+                        globalObs = globalObs.filter(key => {
+                            const [wx, wy] = key.split(',').map(Number);
+                            const dx = Math.abs(wx - activeAnchor.x);
+                            const dy = Math.abs(wy - activeAnchor.y);
+                            return dx > r || dy > r;
+                        });
+
+                        // 注入存档中的局部障碍物
+                        if (archive.localObstacles) {
+                            globalObs.push(...archive.localObstacles);
+                        }
+                        
+                        this.dataManager.seatData.globalObstacles = globalObs;
+
                         this.saveData();
                         this.updateMap();
                     }
@@ -795,9 +858,59 @@ class SeatPage {
                     this.container.querySelector('.seat-viewport').style.cursor = 'default';
                 }
                 this.updateMap();
+
+
+            } // 【新增】：一键清除当前地图逻辑
+            else if (action === 'tool-clear-map') {
+                const bearName = this.currentTab === 'bear1' ? '熊 1' : '熊 2';
+                
+                // 设置点击确认后的回调逻辑
+                this.clearMapModal.onConfirm = (options) => {
+                    const trapData = this.dataManager.seatData[this.currentTab];
+                    const activeAnchor = this.anchors[this.currentTab];
+
+                    // A. 清除人员：移回待选池并清空座位上的 ID
+                    if (options.personnel) {
+                        trapData.seats.forEach(seat => {
+                            if (seat.memberId) {
+                                if (!trapData.unseated.includes(seat.memberId)) {
+                                    trapData.unseated.push(seat.memberId);
+                                }
+                                seat.memberId = null;
+                            }
+                        });
+                    }
+
+                    // B. 清除座位：彻底删除座位数组
+                    if (options.seats) {
+                        trapData.seats = [];
+                    }
+
+                    // C. 清除障碍物：过滤掉当前锚点视野范围内的障碍物
+                    if (options.obstacles) {
+                        const r = this.config.renderRadius; // 35
+                        const globalObs = this.dataManager.seatData.globalObstacles || [];
+                        
+                        this.dataManager.seatData.globalObstacles = globalObs.filter(key => {
+                            const [wx, wy] = key.split(',').map(Number);
+                            // 计算该障碍物相对于当前陷阱中心的本地距离
+                            const dx = Math.abs(wx - activeAnchor.x);
+                            const dy = Math.abs(wy - activeAnchor.y);
+                            // 如果超出 35 格半径，则保留（说明是另一张图的或远处的障碍）
+                            return dx > r || dy > r;
+                        });
+                    }
+
+                    this.saveData();
+                    this.updateMap();
+                };
+
+                // 渲染弹窗
+                this.clearMapModal.render(bearName);
             } else if (action === 'tool-member') {
                 // 实例化弹窗，并在更新后重绘主页面
                 const markerModal = new MemberMarkerModal(this.modalContainer, this.dataManager, () => {
+                    this.saveData(); // <--- 【新增修复】：确保模态框关闭时，兜底触发一次沙盘数据的全局保存
                     this.updateMap();
                 });
                 markerModal.render();
@@ -861,10 +974,10 @@ class SeatPage {
         const caps = { s1: 0, s2: 0, s3: 0, s4: 0 };
         trapData.seats.forEach(s => { if (caps[s.level] !== undefined) caps[s.level]++; });
 
-        // 3. 按照纯战力初始排序
+        // 3. 初始战力排序
         allTargetMembers.sort((a, b) => (a.powerRank || 999) - (b.powerRank || 999));
 
-        // 4. 计算 BaseLevel (如果在大家都是满活跃的情况下，他纯靠战力该坐哪)
+        // 4. 计算基础势能与活跃度惩罚后的最终权重
         const levelNames = ['s1', 's2', 's3', 's4'];
         let currentLvlIdx = 0;
         let remainingCap = caps[levelNames[0]];
@@ -875,46 +988,44 @@ class SeatPage {
                 remainingCap = caps[levelNames[currentLvlIdx]];
             }
             if (remainingCap > 0) {
-                m._baseLevelVal = currentLvlIdx + 1; // 1代表S1, 2代表S2...
+                m._baseLevelVal = currentLvlIdx + 1; 
                 remainingCap--;
             } else {
-                m._baseLevelVal = 5; // 连S4都没位置了
+                m._baseLevelVal = 5; 
             }
-            // 结合活跃度扣除（状态0/1/2），算出最终期待前往的等级
-            m._targetLevelVal = Math.min(4, m._baseLevelVal + (m.activityStatus || 0));
+            // 【核心架构改变】：将目标等级变为一种用于排序的“临时权重偏移量”
+            m._tempSortWeight = Math.min(5, m._baseLevelVal + (m.activityStatus || 0));
         });
 
-        // 5. 逐级决选机制 (竞争 S1 -> S4)
-        let unassignedToNext = []; // 被上一级淘汰下来的人
-        const finalPlacements = []; // 最终名单
+        // 5. 将所有人放入同一个“竞争池”，按最终权重（主）与战力（次）进行全局降维排序
+        allTargetMembers.sort((a, b) => {
+            if (a._tempSortWeight !== b._tempSortWeight) return a._tempSortWeight - b._tempSortWeight;
+            return (a.powerRank || 999) - (b.powerRank || 999);
+        });
 
-        for (let L = 1; L <= 4; L++) {
-            const levelName = levelNames[L-1];
-            const seatsForLevel = caps[levelName];
+        // 6. 按全局排序结果，像水流一样依次填满所有物理坑位
+        const finalPlacements = []; 
+        let assignLvlIdx = 0;
+        let assignCap = caps[levelNames[0]];
 
-            // 争夺本级座位的人 = 本来目标是这级的人 + 被上一级淘汰挤下来的人
-            let candidates = allTargetMembers.filter(m => m._targetLevelVal === L).concat(unassignedToNext);
+        allTargetMembers.forEach(m => {
+            while (assignCap <= 0 && assignLvlIdx < 3) {
+                assignLvlIdx++;
+                assignCap = caps[levelNames[assignLvlIdx]];
+            }
+            if (assignCap > 0) {
+                finalPlacements.push({ member: m, targetLevelName: levelNames[assignLvlIdx] });
+                assignCap--;
+            } else {
+                finalPlacements.push({ member: m, targetLevelName: 'unseated' });
+            }
+        });
 
-            // 核心排序：优先看谁是被惩罚降级掉下来的(即BaseLevel更小)，同情况再比战力
-            candidates.sort((a, b) => {
-                if (a._baseLevelVal !== b._baseLevelVal) return a._baseLevelVal - b._baseLevelVal;
-                return (a.powerRank || 999) - (b.powerRank || 999);
-            });
+        const newUnseated = finalPlacements.filter(p => p.targetLevelName === 'unseated').map(p => p.member);
 
-            // 录取与淘汰
-            const accepted = candidates.slice(0, seatsForLevel);
-            const rejected = candidates.slice(seatsForLevel);
-
-            accepted.forEach(m => finalPlacements.push({ member: m, targetLevelName: levelName }));
-            unassignedToNext = rejected; // 淘汰者滚入下一级的资源池
-        }
-
-        const newUnseated = allTargetMembers.filter(m => m._baseLevelVal === 5).concat(unassignedToNext);
-
-        // 6. 物理座位映射（应用"减少搬家损耗"逻辑：同级别尽量保持原位）
-        const newSeatAssignments = {}; // { seatId: memberId }
-        for (let L = 1; L <= 4; L++) {
-            const levelName = levelNames[L-1];
+        // 7. 物理座位映射（应用"减少搬家损耗"逻辑：如果在同级别则优先保留原坑位）
+        const newSeatAssignments = {}; 
+        levelNames.forEach(levelName => {
             const levelSeats = trapData.seats.filter(s => s.level === levelName);
             const levelPlacements = finalPlacements.filter(p => p.targetLevelName === levelName).map(p => p.member);
 
@@ -922,7 +1033,6 @@ class SeatPage {
             levelSeats.forEach(seat => {
                 const oldMemberIdx = levelPlacements.findIndex(m => m.id === seat.memberId);
                 if (oldMemberIdx !== -1) {
-                    // 他原本就在这级，而且新分配也在这级，锁死原座位！
                     newSeatAssignments[seat.id] = seat.memberId;
                     levelPlacements.splice(oldMemberIdx, 1);
                 } else {
@@ -930,16 +1040,15 @@ class SeatPage {
                 }
             });
 
-            // 剩下的空座位随便分给该级别剩下的人
             levelPlacements.forEach(m => {
                 if (remainingSeats.length > 0) {
                     const seat = remainingSeats.shift();
                     newSeatAssignments[seat.id] = m.id;
                 }
             });
-        }
+        });
 
-        // 7. 生成变更总结文本
+        // 8. 生成变更总结文本
         const changes = [];
         const oldLocations = {};
         trapData.seats.forEach(s => { if(s.memberId) oldLocations[s.memberId] = s.level; });
@@ -956,7 +1065,7 @@ class SeatPage {
             const newL = newLocations[m.id];
             
             if (oldL && newL && oldL !== newL && newL !== 'unseated' && oldL !== 'unseated') {
-                changes.push(`- ${m.nickname}：${oldL.toUpperCase()} ➔ ${newL.toUpperCase()}`);
+                changes.push(`- ${m.nickname}：${oldL.toUpperCase()} ➔ ${nariewL.toUpperCase()}`);
             } else if (oldL !== 'unseated' && (!newL || newL === 'unseated')) {
                 changes.push(`- ${m.nickname}：${oldL.toUpperCase()} ➔ 移出座位`);
             } else if (oldL === 'unseated' && newL && newL !== 'unseated') {
@@ -970,7 +1079,6 @@ class SeatPage {
         }
 
         if (confirm(`自动落座计算完毕，变动如下 (已忽略原位不动的成员)：\n\n${changes.join('\n')}\n\n是否确认应用变动？`)) {
-            // 执行最终写入
             trapData.seats.forEach(s => { s.memberId = newSeatAssignments[s.id] || null; });
             trapData.unseated = newUnseated.map(m => m.id);
             this.saveData();

@@ -43,7 +43,7 @@ class MemberMarkerModal {
                     </div>
                     <div class="modal-footer" style="justify-content: space-between;">
                         <div style="font-size: 12px; color: var(--gray-500); background: #fff; padding: 5px 10px; border-radius: 4px; border: 1px solid var(--gray-200);">
-                             💡 操作说明：右键切换活跃状态 | 点击右上角箭头或拖拽执行跨团调度
+                            操作说明：右键切换活跃状态：<br><br>半活跃--橙框；自动落座时，座位降低一级<br>不活跃--红框；自动落座时，座位降低两级<br><br>自动落座：按战力及活跃度自动排位，若座位级别不变，则不换位置。
                         </div>
                         <button class="btn btn-primary" data-action="close" style="padding: 10px 30px;">完成并同步地图</button>
                     </div>
@@ -222,7 +222,6 @@ class MemberMarkerModal {
         const toData = this.dataManager.seatData[toTrap];
 
         // 1. 【核心逻辑】：如果成员已在原地图安排位置，强制将其从坑位撤离
-        // 这样可以防止同一个成员 ID 出现在两张地图的冲突
         const seat = fromData.seats.find(s => s.memberId === mId);
         if (seat) {
             seat.memberId = null; // 撤离原位
@@ -237,13 +236,19 @@ class MemberMarkerModal {
             toData.unseated.push(mId);
         }
 
-        // 4. 【自动保存】：调用 DataManager 写入 LocalStorage
+        // --- 【新增修复 1：同步成员对象的默认归属属性】 ---
+        const member = this.dataManager.members.findById(mId);
+        if (member) {
+            member.targetBear = toTrap;
+        }
+
+        // 4. 【自动保存】：保存成员配置 (只保存了 members)
         this.dataManager.save();
+        
+        // --- 【新增修复 2：强制将地图的座位分配情况写入硬盘】 ---
+        localStorage.setItem('SeatPage_seatData', JSON.stringify(this.dataManager.seatData));
         
         // 5. 实时刷新预览网格
         this.updateGrids();
-        
-        // 提示：由于 MemberMarkerModal 关闭时会触发 SeatPage 的 onUpdate()，
-        // 此时地图上的人员撤离效果会立即生效。
     }
 }

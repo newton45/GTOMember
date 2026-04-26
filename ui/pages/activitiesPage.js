@@ -11,7 +11,8 @@ class ActivitiesPage {
         this.allocationModal = new TeamAllocationModal(modalContainer);
         this.clearHistoryModal = new ClearHistoryModal(modalContainer);
         this.battleModal = new BattleResultModal(modalContainer);
-        
+        this.helpModal = new HelpModal(modalContainer); // 【新增】实例化帮助组件
+
         this.currentActivityId = null;
         this.currentTeamTab = 1;
         this.isAnimating = false;
@@ -152,6 +153,7 @@ class ActivitiesPage {
                 <div class="activity-topbar">
                     <div class="topbar-left">
                         <span class="topbar-label">活动：</span>
+                        <button class="btn-page-help" data-action="show-help-activities" title="活动生命周期说明">?</button>
                         <select id="activity-selector">
                             ${activities.map(a => `<option value="${a.id}" ${a.id === this.currentActivityId ? 'selected' : ''}>${a.name}</option>`).join('')}
                         </select>
@@ -448,6 +450,11 @@ class ActivitiesPage {
             const action = actionBtn.dataset.action;
 
             switch (action) {
+                // 【新增】活动页帮助弹窗事件
+                case 'show-help-activities':
+                    this.helpModal.render('activities');
+                    break;
+                    
                 case 'switch-team':
                     this.currentTeamTab = parseInt(actionBtn.dataset.team);
                     this.render();
