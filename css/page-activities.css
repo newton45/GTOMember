@@ -108,3 +108,21 @@
 .substitute-style {
     border-color: #a855f7 !important;
 }
+
+.battle-item.sorting-target {
+    border: 3px solid #18181b !important;
+    box-shadow: 0 0 12px rgba(0,0,0,0.3);
+    animation: blinkBattleTarget 0.8s infinite alternate;
+    z-index: 5;
+}
+@keyframes blinkBattleTarget {
+    from { border-color: #18181b; }
+    to { border-color: #d4d4d8; }
+}
+
+.battle-item.search-match {
+    outline: 3px solid #ff00e1;
+    outline-offset: 1px;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+    z-index: 5;
+}

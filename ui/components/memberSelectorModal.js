@@ -79,17 +79,37 @@ class MemberSelectorModal {
             const isSelected = this.selectedIds.has(m.id);
             const isMatch = checkMatch(m);
 
-            // 【核心修复 3】：斩断 CSS 优先级污染，直接用强内联样式注入 3px 黑框与阴影
             const selectedStyle = isSelected 
                 ? 'border: 3px solid #18181b !important; box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important; transform: scale(1.05); z-index: 10;' 
                 : 'border: 1px solid transparent;';
 
-            // isMatch 添加 search-match 类，调用原有紫框样式 (outline)
-            // 这样紫框 (outline) 和选中黑框 (border) 可以在同时满足时完美叠加
+            const battleRecords = (m.activityHistory || []).filter(h => h.type === 'battle' && h.rank !== null);
+            let avgRank = '-';
+            if (battleRecords.length > 0) {
+                const recent = battleRecords.slice(-3);
+                avgRank = (recent.reduce((a, b) => a + b.rank, 0) / recent.length).toFixed(1);
+            }
+
+            const recentHistory = (m.activityHistory || []).filter(h => h.type !== 'unparticipated').slice(-3);
+            let missCount = 0;
+            recentHistory.forEach(h => { 
+                if (h.type === 'absent') missCount += 1;
+                else if (h.type === 'leave') missCount += 0.5;
+            });
+            let attText = "-";
+            if (recentHistory.length > 0) {
+                if (missCount < 1) attText = "好";
+                else if (missCount < 2) attText = "中";
+                else if (missCount < 3) attText = "差";
+                else attText = "死";
+            }
+
             return `
                 <div class="member-entity rank-${m.rank} ${isMatch ? 'search-match' : ''} ${isSelected ? 'selected-target' : ''}" 
                      data-id="${m.id}" 
                      style="cursor: pointer; position: relative; width: var(--cell-size); height: var(--cell-size); transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); ${selectedStyle}">
+                    <div class="top-left-badge">${avgRank}</div>
+                    <div class="top-right-badge">${attText}</div>
                     <div class="entity-name" style="font-size:10px;">${m.nickname}</div>
                     <div class="entity-info-index">${m.powerRank || ''}</div>
                     <div class="entity-rank">${m.rank}</div>
