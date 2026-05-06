@@ -126,3 +126,9 @@
     box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
     z-index: 5;
 }
+
+.member-entity.rubber-hover {
+    outline: 2px dashed #18181b !important;
+    outline-offset: 2px;
+    opacity: 0.7;
+}
