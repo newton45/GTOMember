@@ -40,8 +40,7 @@ class MemberSelectorModal {
                                     padding: 10px;
                                     background: var(--gray-100);
                                     border-radius: 8px;
-                                    position: relative;
-                                    user-select: none;">
+                                    position: relative;">
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -174,6 +173,8 @@ class MemberSelectorModal {
 
         grid.addEventListener('mousemove', (e) => {
             if (!this.rubberBand || !this.rubberStart) return;
+
+            e.preventDefault();
 
             const rect = grid.getBoundingClientRect();
             const currentX = e.clientX - rect.left + grid.scrollLeft;
